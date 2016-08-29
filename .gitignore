@@ -1,0 +1,6 @@
+*.o
+.flavor
+.objs
+sndio-aucatctl.so
+assets.h
+cert
