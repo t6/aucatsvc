@@ -16,29 +16,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sndio.h>
 #include <unistd.h>
 #include "sysex.h"
+
+#include "aucatctl.h"
 
 #define MIDI_CMDMASK	0xf0		/* command mask */
 #define MIDI_CHANMASK	0x0f		/* channel mask */
 #define MIDI_CTL	0xb0		/* controller command */
 #define MIDI_CTLVOL	7		/* volume */
-#define MIDI_NCHAN	16		/* max channels */
 #define MSGMAX		0x100		/* buffer size */
 
-struct mio_hdl *hdl;			/* handle to aucat MIDI port */
-int mst, midx, mlen, mready;		/* midi parser state */
-unsigned char mmsg[MSGMAX];		/* resulting midi message */
-
-struct ctl {
-	char name[SYSEX_NAMELEN];	/* stream name */
-	unsigned vol;			/* current volume */
-} ctls[MIDI_NCHAN];
-int master = -1;
+struct midi_parser_state {
+	struct mio_hdl *hdl;
+	int mst, midx, mlen, mready;		/* midi parser state */
+	unsigned char mmsg[MSGMAX];		/* resulting midi message */
+	int master;
+};
 
 unsigned char dumpreq[] = {
-	SYSEX_START,	
+	SYSEX_START,
 	SYSEX_TYPE_EDU,
 	0,
 	SYSEX_AUCAT,
@@ -46,8 +43,8 @@ unsigned char dumpreq[] = {
 	SYSEX_END
 };
 
-void
-setvol(unsigned cn, unsigned vol)
+int
+setvol(struct mio_hdl *hdl, unsigned cn, unsigned vol)
 {
 #define VOLMSGLEN 3
 	char msg[VOLMSGLEN];
@@ -56,14 +53,13 @@ setvol(unsigned cn, unsigned vol)
 	msg[1] = MIDI_CTLVOL;
 	msg[2] = vol;
 	if (mio_write(hdl, msg, VOLMSGLEN) != VOLMSGLEN) {
-	        fprintf(stderr, "couldn't write message\n");
-		exit(1);
+		return 1;
 	}
-	printf("%s -> %u\n", ctls[cn].name, vol);
+	return 0;
 }
 
-void
-setmaster(unsigned vol)
+int
+setmaster(struct mio_hdl *hdl, unsigned vol)
 {
 	struct sysex msg;
 
@@ -75,23 +71,16 @@ setmaster(unsigned vol)
 	msg.u.master.coarse = vol;
 	msg.u.master.end = SYSEX_END;
 	if (mio_write(hdl, &msg, SYSEX_SIZE(master)) == 0) {
-	        fprintf(stderr, "couldn't write message\n");
-		exit(1);
+		return 1;
 	}
-	printf("master -> %u\n", vol);
+	return 0;
 }
 
-void
-relocate(unsigned hr, unsigned min, unsigned sec, unsigned fr, unsigned fps)
+static void
+onsysex(struct midi_parser_state *p, struct ctl *ctls, unsigned char *buf, unsigned len)
 {
-}
-
-void
-onsysex(unsigned char *buf, unsigned len)
-{
-	unsigned cn, i;
+	unsigned cn;
 	struct sysex *x = (struct sysex *)buf;
-	struct ctl *c;
 
 #if 0 //DEBUG
 	fprintf(stderr, "sysex: ");
@@ -104,7 +93,7 @@ onsysex(unsigned char *buf, unsigned len)
 	if (x->type == SYSEX_TYPE_RT &&
 	    x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
 		if (len == SYSEX_SIZE(master))
-			master = x->u.master.coarse;
+			p->master = x->u.master.coarse;
 		return;
 	}
 	if (x->type != SYSEX_TYPE_EDU ||
@@ -114,24 +103,24 @@ onsysex(unsigned char *buf, unsigned len)
 	case SYSEX_AUCAT_MIXINFO:
 		cn = x->u.mixinfo.chan;
 		if (cn >= MIDI_NCHAN) {
-			fprintf(stderr, "%u: invalid channel\n");
+			fprintf(stderr, "invalid channel\n");
 			exit(1);
 		}
 		if (memchr(x->u.mixinfo.name, '\0', SYSEX_NAMELEN) == NULL) {
-			fprintf(stderr, "%u: invalid channel name\n");
+			fprintf(stderr, "invalid channel name\n");
 			exit(1);
 		}
-		strlcpy(ctls[cn].name, x->u.mixinfo.name, SYSEX_NAMELEN);
+		strlcpy(ctls[cn].name, (const char *)x->u.mixinfo.name, SYSEX_NAMELEN);
 		ctls[cn].vol = 0;
 		break;
 	case SYSEX_AUCAT_DUMPEND:
-		mready = 1;
+		p->mready = 1;
 		break;
 	}
 }
 
-void
-oncommon(unsigned char *buf, unsigned len)
+static void
+oncommon(struct ctl *ctls, unsigned char *buf, unsigned len)
 {
 	unsigned cn, vol;
 
@@ -144,8 +133,8 @@ oncommon(unsigned char *buf, unsigned len)
 	ctls[cn].vol = vol;
 }
 
-void
-oninput(unsigned char *buf, unsigned len)
+static void
+oninput(struct midi_parser_state *p, struct ctl *ctls, unsigned char *buf, unsigned len)
 {
 	static unsigned voice_len[] = { 3, 3, 3, 3, 2, 2, 3 };
 	static unsigned common_len[] = { 0, 2, 3, 2, 0, 0, 1, 1 };
@@ -158,129 +147,55 @@ oninput(unsigned char *buf, unsigned len)
 		if (c >= 0xf8) {
 			/* clock events not used yet */
 		} else if (c >= 0xf0) {
-			if (mst == SYSEX_START &&
+			if (p->mst == SYSEX_START &&
 			    c == SYSEX_END &&
-			    midx < MSGMAX) {
-				mmsg[midx++] = c;
+			    p->midx < MSGMAX) {
+				p->mmsg[p->midx++] = c;
 
-				onsysex(mmsg, midx);
+				onsysex(p, ctls, p->mmsg, p->midx);
 				continue;
 			}
-			mmsg[0] = c;
-			mlen = common_len[c & 7];
-			mst = c;
-			midx = 1;
+			p->mmsg[0] = c;
+			p->mlen = common_len[c & 7];
+			p->mst = c;
+			p->midx = 1;
 		} else if (c >= 0x80) {
-			mmsg[0] = c;
-			mlen = voice_len[(c >> 4) & 7];
-			mst = c;
-			midx = 1;
-		} else if (mst) {
-			if (midx == MSGMAX)
-				continue;		
-			if (midx == 0)
-				mmsg[midx++] = mst;
-			mmsg[midx++] = c;
-			if (midx == mlen) {
-				oncommon(mmsg, midx);
-				midx = 0;
+			p->mmsg[0] = c;
+			p->mlen = voice_len[(c >> 4) & 7];
+			p->mst = c;
+			p->midx = 1;
+		} else if (p->mst) {
+			if (p->midx == MSGMAX)
+				continue;
+			if (p->midx == 0)
+				p->mmsg[p->midx++] = p->mst;
+			p->mmsg[p->midx++] = c;
+			if (p->midx == p->mlen) {
+				oncommon(ctls, p->mmsg, p->midx);
+				p->midx = 0;
 			}
 		}
 	}
-}
-
-void
-usage(void)
-{
-	fprintf(stderr, "usage: aucatctl [-f port] [expr ...]\n");
-	exit(1);
 }
 
 int
-main(int argc, char **argv)
-{
-	char *dev = "snd/0";
-	unsigned char buf[MSGMAX], *lhs, *rhs;
+readvols(struct mio_hdl *hdl, struct ctl *ctls, int *master) {
+	unsigned char buf[MSGMAX];
 	unsigned size;
-	unsigned cn, vol;
-	int c, sep;
+	struct midi_parser_state p = {};
+	p.master = -1;
 
-	while ((c = getopt(argc, argv, "f:")) != -1) {
-		switch (c) {
-		case 'f':
-			dev = optarg;
-			break;
-		default:
-			usage();
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	hdl = mio_open(dev, MIO_OUT | MIO_IN, 0);
-	if (hdl == NULL) {
-		fprintf(stderr, "%s: couldn't open MIDI device\n", dev);
-		exit(1);
-	}
 	mio_write(hdl, dumpreq, sizeof(dumpreq));
-	while (!mready) {
+	while (!p.mready) {
 		size = mio_read(hdl, buf, MSGMAX);
 		if (size == 0) {
-			fprintf(stderr, "%s: read failed\n", dev);
-			exit(1);
-		}
-		oninput(buf, size);
-	}
-	if (argc == 0) {
-		for (cn = 0; cn < MIDI_NCHAN; cn++) {
-			if (*ctls[cn].name != '\0') {
-				printf("%s=%u\n",
-				    ctls[cn].name,
-				    ctls[cn].vol);
-			}
-		}
-		if (master >= 0)
-			printf("master=%u\n", master);
-		return 0;
-	}
-	for (; argc > 0; argc--, argv++) {
-		lhs = *argv;
-		rhs = strchr(*argv, '=');
-		if (rhs) {
-			*rhs++ = '\0';
-			if (sscanf(rhs, "%u", &vol) != 1) {
-				fprintf(stderr, "%s: not a number\n", lhs);
-				return 1;
-			}
-			if (vol > 127) {
-				fprintf(stderr, "%u: not in 0..127\n", vol);
-				return 1;
-			}
-		}
-		if (strlen(lhs) == 0) {
-			fprintf(stderr, "stream name expected\n");
+			*master = -1;
 			return 1;
 		}
-		if (master >= 0 && strcmp(lhs, "master") == 0) {
-			if (rhs)
-				setmaster(vol);
-			else
-				printf("master=%u\n", master);
-			continue;
-		}
-		for (cn = 0; ; cn++) {
-			if (cn == MIDI_NCHAN) {
-				fprintf(stderr, "%s: no such stream\n", lhs);
-				return 1;
-			}
-			if (strcmp(lhs, ctls[cn].name) == 0)
-				break;
-		}
-		if (rhs)
-			setvol(cn, vol);
-		else
-			printf("%s=%u\n", ctls[cn].name, ctls[cn].vol);
+		oninput(&p, ctls, buf, size);
 	}
-	mio_close(hdl);
+
+	*master = p.master;
+
 	return 0;
 }
