@@ -46,7 +46,6 @@ serve_index_js(struct http_request *req)
 int
 serve_aucat(struct http_request *req)
 {
-	char *audiodevice;
 	char *chan;
 	char *errmsg;
 	int cn;
@@ -59,26 +58,16 @@ serve_aucat(struct http_request *req)
 	u_int8_t *d;
 	uint32_t newvol;
 
-	audiodevice = getenv("AUDIODEVICE");
-	/*
-	 * The default sndio socket /tmp/aucat/aucat0 is not available
-	 * in the chroot, so we're using the TCP socket instead.
-	 * There is no /etc/resolv.conf or /etc/hosts (unless copied
-	 * before starting the service) so name resolution is not
-	 * available by default.
-	 */
-	if (!audiodevice)
-		audiodevice = "snd@127.0.0.1/0";
-
 	/*
 	 * sndio searches for the .aucat_cookie at HOME.  kore chroots
-	 * and the cookie should be made available in the chroot dir.
+	 * and the cookie should be copied to the chroot dir by the
+	 * user.
 	 */
 	putenv("HOME=/");
 
-	hdl = mio_open(audiodevice, MIO_OUT | MIO_IN, 0);
+	hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
 	if (hdl == NULL) {
-		kore_log(LOG_WARNING, "unable to open device: %s", audiodevice);
+		kore_log(LOG_WARNING, "unable to open device: %s", AUDIODEVICE);
 		errmsg = "{\"error\":\"Unable to open device\"}";
 		http_response_header(req, "content-type", "application/json");
 		http_response(req, 500, errmsg, strlen(errmsg));
