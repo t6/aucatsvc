@@ -17,15 +17,27 @@
 #include <kore/kore.h>
 #include <kore/http.h>
 
+#include "assets.h"
 #include "aucatctl.h"
 
-int service(struct http_request *);
+int serve_index(struct http_request *);
+int serve_aucat(struct http_request *);
 
 int v_chan(struct http_request *, char *);
 int v_vol(struct http_request *, char *);
 
 int
-service(struct http_request *req) {
+serve_index(struct http_request *req)
+{
+	http_response_header(req, "content-type", "text/html");
+	http_response(req, 200, asset_index_html, asset_len_index_html);
+	return (KORE_RESULT_OK);
+}
+
+int
+serve_aucat(struct http_request *req)
+{
+	char *audiodevice;
 	char *chan;
 	char *errmsg;
 	int cn;
@@ -38,16 +50,20 @@ service(struct http_request *req) {
 	u_int8_t *d;
 	uint32_t newvol;
 
-	hdl = mio_open("snd/0", MIO_OUT | MIO_IN, 0);
+	audiodevice = getenv("AUDIODEVICE");
+	if (!audiodevice)
+		audiodevice = "snd/0";
+
+	hdl = mio_open(audiodevice, MIO_OUT | MIO_IN, 0);
 	if (hdl == NULL) {
-		errmsg = "Unable to open device\n";
-		http_response_header(req, "content-type", "text/plain");
+		errmsg = "{\"error\":\"Unable to open device\"}";
+		http_response_header(req, "content-type", "application/json");
 		http_response(req, 500, errmsg, strlen(errmsg));
 		goto cleanup;
 	}
 	if (readvols(hdl, ctls, &mastervol)) {
-		errmsg = "Unable to read volumes\n";
-		http_response_header(req, "content-type", "text/plain");
+		errmsg = "{\"error\":\"Unable to read volumes\"}";
+		http_response_header(req, "content-type", "application/json");
 		http_response(req, 500, errmsg, strlen(errmsg));
 		goto cleanup;
 	}
@@ -55,53 +71,66 @@ service(struct http_request *req) {
 	if (req->method == HTTP_METHOD_POST) {
 		http_populate_post(req);
 		if (http_argument_get_uint32(req, "vol", &newvol) == KORE_RESULT_ERROR) {
-			errmsg = "'vol' is missing or not 0 < vol <= 127\n";
-			http_response_header(req, "content-type", "text/plain");
+			errmsg = "{\"error\":\"'vol' is missing or not 0 < vol <= 127\"}";
+			http_response_header(req, "content-type", "application/json");
 			http_response(req, 400, errmsg, strlen(errmsg));
 			goto cleanup;
 		}
 		if (http_argument_get_string(req, "chan", &chan) == KORE_RESULT_ERROR) {
-			errmsg = "'chan' is missing or malformed\n";
-			http_response_header(req, "content-type", "text/plain");
+			errmsg = "{\"error\":\"'chan' is missing or malformed\"}";
+			http_response_header(req, "content-type", "application/json");
 			http_response(req, 400, errmsg, strlen(errmsg));
 			goto cleanup;
 		}
 
-		foundchan = 0;
-		for (cn = 0; cn < MIDI_NCHAN; cn++) {
-			if (strcmp(ctls[cn].name, chan) == 0) {
-				if (setvol(hdl, cn, newvol)) {
-					errmsg = "Unable to set volume of channel";
-					http_response_header(req, "content-type", "text/plain");
-					http_response(req, 500, errmsg, strlen(errmsg));
-					goto cleanup;
-				}
-				ctls[cn].vol = newvol;
-				foundchan = 1;
-				break;
+		if (strcmp(chan, "master") == 0) {
+			kore_log(LOG_DEBUG, "master=%d", newvol);
+			if (setmaster(hdl, newvol)) {
+				errmsg = "{\"error\":\"Unable to set volume of channel\"}";
+				http_response_header(req, "content-type", "application/json");
+				http_response(req, 500, errmsg, strlen(errmsg));
+				goto cleanup;
 			}
-		}
-		if (!foundchan) {
-			errmsg = "Unknown channel\n";
-			http_response_header(req, "content-type", "text/plain");
-			http_response(req, 400, errmsg, strlen(errmsg));
-			goto cleanup;
+			mastervol = newvol;
+		} else {
+			kore_log(LOG_DEBUG, "%s=%d", chan, newvol);
+			foundchan = 0;
+			for (cn = 0; cn < MIDI_NCHAN; cn++) {
+				if (strcmp(ctls[cn].name, chan) == 0) {
+					if (setvol(hdl, cn, newvol)) {
+						errmsg = "{\"error\":\"Unable to set volume of channel\"}";
+						http_response_header(req, "content-type", "application/json");
+						http_response(req, 500, errmsg, strlen(errmsg));
+						goto cleanup;
+					}
+					ctls[cn].vol = newvol;
+					foundchan = 1;
+					break;
+				}
+			}
+			if (!foundchan) {
+				errmsg = "{\"error\":\"Unknown channel\"}";
+				http_response_header(req, "content-type", "application/json");
+				http_response(req, 400, errmsg, strlen(errmsg));
+				goto cleanup;
+			}
 		}
 	}
 
 	buf = kore_buf_alloc(MIDI_NCHAN * SYSEX_NAMELEN);
+	kore_buf_appendf(buf, "{\"chans\":[");
 	if (mastervol >= 0)
-		kore_buf_appendf(buf, "master=%u\n", mastervol);
+		kore_buf_appendf(buf, "{\"chan\":\"master\",\"vol\":%u}", mastervol);
 	for (cn = 0; cn < MIDI_NCHAN; cn++) {
 		if (*ctls[cn].name != '\0') {
-			kore_buf_appendf(buf, "%s=%u\n", ctls[cn].name,
-					 ctls[cn].vol);
+			kore_buf_appendf(buf, ",{\"chan\":\"%s\",\"vol\":%u}",
+					 ctls[cn].name, ctls[cn].vol);
 		}
 	}
-
+	kore_buf_appendf(buf, "]}");
 	d = kore_buf_release(buf, &len);
 	buf = NULL;
-	http_response_header(req, "content-type", "text/plain");
+	http_response_header(req, "content-type", "application/json");
 	http_response(req, 200, d, len);
 	kore_free(d);
 

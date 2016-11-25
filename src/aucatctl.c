@@ -63,6 +63,7 @@ setmaster(struct mio_hdl *hdl, unsigned vol)
 {
 	struct sysex msg;
 
+	bzero(&msg, sizeof(struct sysex));
 	msg.start = SYSEX_START;
 	msg.type = SYSEX_TYPE_RT;
 	msg.id0 = SYSEX_CONTROL;
@@ -70,7 +71,7 @@ setmaster(struct mio_hdl *hdl, unsigned vol)
 	msg.u.master.fine = 0;
 	msg.u.master.coarse = vol;
 	msg.u.master.end = SYSEX_END;
-	if (mio_write(hdl, &msg, SYSEX_SIZE(master)) == 0) {
+	if (mio_write(hdl, &msg, SYSEX_SIZE(master)) != SYSEX_SIZE(master)) {
 		return 1;
 	}
 	return 0;
@@ -182,7 +183,9 @@ int
 readvols(struct mio_hdl *hdl, struct ctl *ctls, int *master) {
 	unsigned char buf[MSGMAX];
 	unsigned size;
-	struct midi_parser_state p = {};
+	struct midi_parser_state p;
+
+	bzero(&p, sizeof(struct midi_parser_state));
 	p.master = -1;
 
 	mio_write(hdl, dumpreq, sizeof(dumpreq));
