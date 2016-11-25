@@ -21,6 +21,7 @@
 #include "aucatctl.h"
 
 int serve_index(struct http_request *);
+int serve_index_js(struct http_request *);
 int serve_aucat(struct http_request *);
 
 int v_chan(struct http_request *, char *);
@@ -31,6 +32,14 @@ serve_index(struct http_request *req)
 {
 	http_response_header(req, "content-type", "text/html");
 	http_response(req, 200, asset_index_html, asset_len_index_html);
+	return (KORE_RESULT_OK);
+}
+
+int
+serve_index_js(struct http_request *req)
+{
+	http_response_header(req, "content-type", "application/javascript");
+	http_response(req, 200, asset_index_js, asset_len_index_js);
 	return (KORE_RESULT_OK);
 }
 
