@@ -115,8 +115,8 @@ serve_aucat(struct http_request *req)
 			goto cleanup;
 		}
 
+		kore_log(LOG_DEBUG, "%s=%d", chan, newvol);
 		if (strcmp(chan, "master") == 0) {
-			kore_log(LOG_DEBUG, "master=%d", newvol);
 			if (setmaster(hdl, newvol)) {
 				kore_log(LOG_WARNING, "unable to set volume of channel");
 				http_response(req, 500, NULL, 0);
@@ -126,13 +126,12 @@ serve_aucat(struct http_request *req)
 		} else if (strcmp(chan, "mixer") == 0) {
 			mixervol = 100.0*newvol/127;
 			mixervol = (mixervol) | (mixervol << 8);
-			if (ioctl(mixerfd, SOUND_MIXER_WRITE_VOLUME, &mixervol) < 0) {
-				kore_log(LOG_WARNING, "SOUND_MIXER_WRITE_VOLUME: %s", strerror(errno));
+			if (ioctl(mixerfd, MIXER_WRITE(OSS_MIXER_CHANNEL), &mixervol) < 0) {
+				kore_log(LOG_WARNING, "MIXER_WRITE: %s", strerror(errno));
 				http_response(req, 500, NULL, 0);
 				goto cleanup;
 			}
 		} else {
-			kore_log(LOG_DEBUG, "%s=%d", chan, newvol);
 			foundchan = 0;
 			for (cn = 0; cn < MIDI_NCHAN; cn++) {
 				if (strcmp(ctls[cn].name, chan) == 0) {
@@ -153,8 +152,8 @@ serve_aucat(struct http_request *req)
 		}
 	}
 
-	if (ioctl(mixerfd, SOUND_MIXER_READ_VOLUME, &mixervol) < 0) {
-		kore_log(LOG_WARNING, "SOUND_MIXER_READ_VOLUME: %s", strerror(errno));
+	if (ioctl(mixerfd, MIXER_READ(OSS_MIXER_CHANNEL), &mixervol) < 0) {
+		kore_log(LOG_WARNING, "MIXER_READ: %s", strerror(errno));
 		http_response(req, 500, NULL, 0);
 		goto cleanup;
 	}
