@@ -47,7 +47,6 @@ int
 serve_aucat(struct http_request *req)
 {
 	char *chan;
-	char *errmsg;
 	int cn;
 	int foundchan;
 	int mastervol;
@@ -68,39 +67,33 @@ serve_aucat(struct http_request *req)
 	hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
 	if (hdl == NULL) {
 		kore_log(LOG_WARNING, "unable to open device: %s", AUDIODEVICE);
-		errmsg = "{\"error\":\"Unable to open device\"}";
-		http_response_header(req, "content-type", "application/json");
-		http_response(req, 500, errmsg, strlen(errmsg));
+		http_response(req, 500, NULL, 0);
 		goto cleanup;
 	}
 	if (readvols(hdl, ctls, &mastervol)) {
-		errmsg = "{\"error\":\"Unable to read volumes\"}";
-		http_response_header(req, "content-type", "application/json");
-		http_response(req, 500, errmsg, strlen(errmsg));
+		kore_log(LOG_WARNING, "unable to read volumes");
+		http_response(req, 500, NULL, 0);
 		goto cleanup;
 	}
 
 	if (req->method == HTTP_METHOD_POST) {
 		http_populate_post(req);
 		if (http_argument_get_uint32(req, "vol", &newvol) == KORE_RESULT_ERROR) {
-			errmsg = "{\"error\":\"'vol' is missing or not 0 < vol <= 127\"}";
-			http_response_header(req, "content-type", "application/json");
-			http_response(req, 400, errmsg, strlen(errmsg));
+			kore_log(LOG_WARNING, "'vol' is missing or not 0 < vol <= 127");
+			http_response(req, 400, NULL, 0);
 			goto cleanup;
 		}
 		if (http_argument_get_string(req, "chan", &chan) == KORE_RESULT_ERROR) {
-			errmsg = "{\"error\":\"'chan' is missing or malformed\"}";
-			http_response_header(req, "content-type", "application/json");
-			http_response(req, 400, errmsg, strlen(errmsg));
+			kore_log(LOG_WARNING, "'chan' is missing or malformed");
+			http_response(req, 400, NULL, 0);
 			goto cleanup;
 		}
 
 		if (strcmp(chan, "master") == 0) {
 			kore_log(LOG_DEBUG, "master=%d", newvol);
 			if (setmaster(hdl, newvol)) {
-				errmsg = "{\"error\":\"Unable to set volume of channel\"}";
-				http_response_header(req, "content-type", "application/json");
-				http_response(req, 500, errmsg, strlen(errmsg));
+				kore_log(LOG_WARNING, "unable to set volume of channel");
+				http_response(req, 500, NULL, 0);
 				goto cleanup;
 			}
 			mastervol = newvol;
@@ -110,9 +103,8 @@ serve_aucat(struct http_request *req)
 			for (cn = 0; cn < MIDI_NCHAN; cn++) {
 				if (strcmp(ctls[cn].name, chan) == 0) {
 					if (setvol(hdl, cn, newvol)) {
-						errmsg = "{\"error\":\"Unable to set volume of channel\"}";
-						http_response_header(req, "content-type", "application/json");
-						http_response(req, 500, errmsg, strlen(errmsg));
+						kore_log(LOG_WARNING, "unable to set volume of channel");
+						http_response(req, 500, NULL, 0);
 						goto cleanup;
 					}
 					ctls[cn].vol = newvol;
@@ -121,9 +113,7 @@ serve_aucat(struct http_request *req)
 				}
 			}
 			if (!foundchan) {
-				errmsg = "{\"error\":\"Unknown channel\"}";
-				http_response_header(req, "content-type", "application/json");
-				http_response(req, 400, errmsg, strlen(errmsg));
+				http_response(req, 400, NULL, 0);
 				goto cleanup;
 			}
 		}
@@ -131,8 +121,7 @@ serve_aucat(struct http_request *req)
 
 	buf = kore_buf_alloc(MIDI_NCHAN * SYSEX_NAMELEN);
 	kore_buf_appendf(buf, "{\"chans\":[");
-	if (mastervol >= 0)
-		kore_buf_appendf(buf, "{\"chan\":\"master\",\"vol\":%u}", mastervol);
+	kore_buf_appendf(buf, "{\"chan\":\"master\",\"vol\":%u}", mastervol);
 	for (cn = 0; cn < MIDI_NCHAN; cn++) {
 		if (*ctls[cn].name != '\0') {
 			kore_buf_appendf(buf, ",{\"chan\":\"%s\",\"vol\":%u}",
