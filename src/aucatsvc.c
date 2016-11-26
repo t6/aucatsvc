@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <kore/kore.h>
 #include <kore/http.h>
+#include <sys/ioctl.h>
 #include <sys/soundcard.h>
 
 #include "assets.h"
