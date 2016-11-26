@@ -14,18 +14,42 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <fcntl.h>
 #include <kore/kore.h>
 #include <kore/http.h>
+#include <sys/soundcard.h>
 
 #include "assets.h"
 #include "aucatctl.h"
 
+int init(int);
 int serve_index(struct http_request *);
 int serve_index_js(struct http_request *);
 int serve_aucat(struct http_request *);
 
 int v_chan(struct http_request *, char *);
 int v_vol(struct http_request *, char *);
+
+static int mixerfd = -1;
+
+int
+init(int state)
+{
+	switch (state) {
+	case KORE_MODULE_LOAD:
+		mixerfd = open("/dev/mixer", O_RDWR | O_CLOEXEC);
+		if (mixerfd < 0) {
+			kore_log(LOG_WARNING, "open: %s", strerror(errno));
+			return (KORE_RESULT_ERROR);
+		}
+		break;
+	case KORE_MODULE_UNLOAD:
+		close(mixerfd);
+		break;
+	}
+
+	return (KORE_RESULT_OK);
+}
 
 int
 serve_index(struct http_request *req)
@@ -50,6 +74,7 @@ serve_aucat(struct http_request *req)
 	int cn;
 	int foundchan;
 	int mastervol;
+	int mixervol;
 	size_t len;
 	struct ctl ctls[MIDI_NCHAN] = {};
 	struct kore_buf *buf = NULL;
@@ -66,7 +91,7 @@ serve_aucat(struct http_request *req)
 
 	hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
 	if (hdl == NULL) {
-		kore_log(LOG_WARNING, "unable to open device: %s", AUDIODEVICE);
+		kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
 		http_response(req, 500, NULL, 0);
 		goto cleanup;
 	}
@@ -97,6 +122,14 @@ serve_aucat(struct http_request *req)
 				goto cleanup;
 			}
 			mastervol = newvol;
+		} else if (strcmp(chan, "mixer") == 0) {
+			mixervol = 100.0*newvol/127;
+			mixervol = (mixervol) | (mixervol << 8);
+			if (ioctl(mixerfd, SOUND_MIXER_WRITE_VOLUME, &mixervol) < 0) {
+				kore_log(LOG_WARNING, "SOUND_MIXER_WRITE_VOLUME: %s", strerror(errno));
+				http_response(req, 500, NULL, 0);
+				goto cleanup;
+			}
 		} else {
 			kore_log(LOG_DEBUG, "%s=%d", chan, newvol);
 			foundchan = 0;
@@ -119,9 +152,18 @@ serve_aucat(struct http_request *req)
 		}
 	}
 
+	if (ioctl(mixerfd, SOUND_MIXER_READ_VOLUME, &mixervol) < 0) {
+		kore_log(LOG_WARNING, "SOUND_MIXER_READ_VOLUME: %s", strerror(errno));
+		http_response(req, 500, NULL, 0);
+		goto cleanup;
+	}
+	/* Get left channel volume and scale to 0..127 */
+	mixervol = 127.0*(mixervol & 0x7f)/100;
+	
 	buf = kore_buf_alloc(MIDI_NCHAN * SYSEX_NAMELEN);
 	kore_buf_appendf(buf, "{\"chans\":[");
-	kore_buf_appendf(buf, "{\"chan\":\"master\",\"vol\":%u}", mastervol);
+	kore_buf_appendf(buf, "{\"chan\":\"mixer\",\"vol\":%u}", mixervol);
+	kore_buf_appendf(buf, ",{\"chan\":\"master\",\"vol\":%u}", mastervol);
 	for (cn = 0; cn < MIDI_NCHAN; cn++) {
 		if (*ctls[cn].name != '\0') {
 			kore_buf_appendf(buf, ",{\"chan\":\"%s\",\"vol\":%u}",
