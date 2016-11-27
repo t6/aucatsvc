@@ -20,6 +20,10 @@
 #include <sys/ioctl.h>
 #include <sys/soundcard.h>
 
+#ifdef __FreeBSD__
+#include <sys/capsicum.h>
+#endif
+
 #include "assets.h"
 #include "aucatctl.h"
 
@@ -37,6 +41,14 @@ static struct mio_hdl *hdl = NULL;
 int
 init(int state)
 {
+#ifdef __FreeBSD__
+	cap_rights_t rights;
+	const unsigned long ioctls[] = {
+		MIXER_READ(OSS_MIXER_CHANNEL),
+		MIXER_WRITE(OSS_MIXER_CHANNEL),
+	};
+#endif
+
 	switch (state) {
 	case KORE_MODULE_LOAD:
 		mixerfd = open("/dev/mixer", O_RDWR | O_CLOEXEC);
@@ -44,6 +56,17 @@ init(int state)
 			kore_log(LOG_WARNING, "open: %s", strerror(errno));
 			return (KORE_RESULT_ERROR);
 		}
+#ifdef __FreeBSD__
+		cap_rights_init(&rights, CAP_IOCTL);
+		if (cap_rights_limit(mixerfd, &rights) < 0) {
+			kore_log(LOG_WARNING, "cap_rights_limit: %s", strerror(errno));
+			return (KORE_RESULT_ERROR);
+		}
+		if (cap_ioctls_limit(mixerfd, ioctls, nitems(ioctls)) < 0) {
+			kore_log(LOG_WARNING, "cap_ioctls_limit: %s", strerror(errno));
+			return (KORE_RESULT_ERROR);
+		}
+#endif
 		hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 1);
 		if (hdl == NULL) {
 			kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
