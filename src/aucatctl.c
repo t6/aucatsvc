@@ -63,7 +63,7 @@ setmaster(struct mio_hdl *hdl, unsigned vol)
 {
 	struct sysex msg;
 
-	bzero(&msg, sizeof(struct sysex));
+	memset(&msg, 0, sizeof(struct sysex));
 	msg.start = SYSEX_START;
 	msg.type = SYSEX_TYPE_RT;
 	msg.id0 = SYSEX_CONTROL;
@@ -185,7 +185,7 @@ readvols(struct mio_hdl *hdl, struct ctl *ctls, int *master) {
 	unsigned size;
 	struct midi_parser_state p;
 
-	bzero(&p, sizeof(struct midi_parser_state));
+	memset(&p, 0, sizeof(struct midi_parser_state));
 	p.master = -1;
 
 	mio_write(hdl, dumpreq, sizeof(dumpreq));
