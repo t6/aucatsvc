@@ -13,6 +13,7 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -181,20 +182,36 @@ oninput(struct midi_parser_state *p, struct ctl *ctls, unsigned char *buf, unsig
 
 int
 readvols(struct mio_hdl *hdl, struct ctl *ctls, int *master) {
+	struct pollfd pfds[2];
 	unsigned char buf[MSGMAX];
 	unsigned size;
+	int ev, nfds;
 	struct midi_parser_state p;
 
 	memset(&p, 0, sizeof(struct midi_parser_state));
 	p.master = -1;
 
+	while ((size = mio_read(hdl, buf, MSGMAX)) != 0)
+	 	continue;
+	
 	mio_write(hdl, dumpreq, sizeof(dumpreq));
+	nfds = mio_nfds(hdl);
+	if (nfds > 2)
+		return 1;
+
+	if (mio_pollfd(hdl, pfds, POLLIN) < 0)
+		return 1;
+
+	while (!(ev & POLLIN)) {
+		if (poll(pfds, nfds, -1) < 0)
+			return 1;
+		ev = mio_revents(hdl, pfds);
+	}
+
 	while (!p.mready) {
 		size = mio_read(hdl, buf, MSGMAX);
-		if (size == 0) {
-			*master = -1;
+		if (size == 0)
 			return 1;
-		}
 		oninput(&p, ctls, buf, size);
 	}
 

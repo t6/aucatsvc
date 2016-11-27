@@ -32,6 +32,7 @@ int v_chan(struct http_request *, char *);
 int v_vol(struct http_request *, char *);
 
 static int mixerfd = -1;
+static struct mio_hdl *hdl = NULL;
 
 int
 init(int state)
@@ -43,9 +44,15 @@ init(int state)
 			kore_log(LOG_WARNING, "open: %s", strerror(errno));
 			return (KORE_RESULT_ERROR);
 		}
+		hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 1);
+		if (hdl == NULL) {
+			kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
+			return (KORE_RESULT_ERROR);
+		}
 		break;
 	case KORE_MODULE_UNLOAD:
 		close(mixerfd);
+		mio_close(hdl);
 		break;
 	}
 
@@ -79,7 +86,6 @@ serve_aucat(struct http_request *req)
 	size_t len;
 	struct ctl ctls[MIDI_NCHAN] = {};
 	struct kore_buf *buf = NULL;
-	struct mio_hdl *hdl;
 	u_int8_t *d;
 	uint32_t newvol;
 
@@ -90,12 +96,6 @@ serve_aucat(struct http_request *req)
 	 */
 	putenv("HOME=/");
 
-	hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
-	if (hdl == NULL) {
-		kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
-		http_response(req, 500, NULL, 0);
-		goto cleanup;
-	}
 	if (readvols(hdl, ctls, &mastervol)) {
 		kore_log(LOG_WARNING, "unable to read volumes");
 		http_response(req, 500, NULL, 0);
@@ -180,8 +180,6 @@ serve_aucat(struct http_request *req)
 cleanup:
 	if (buf)
 		kore_buf_cleanup(buf);
-	if (hdl)
-		mio_close(hdl);
 	return (KORE_RESULT_OK);
 }
 
