@@ -1,0 +1,66 @@
+$track-background-color: #181A26 !default;
+$track-color: #550055 !default;
+$thumb-color: #4444aa !default;
+
+$thumb-radius: 360px !default;
+$thumb-border-color: #070 !default;
+
+$button-border-color: $thumb-border-color;
+$track-radius: 0px;
+
+$text-color: #ccc;
+$button-text-color: #ccc;
+
+@import 'inputrange';
+
+body {
+    font-family: sans;
+    text-align: left;
+    color: $text-color;
+    background-color: $track-background-color;
+}
+
+.volume-control {
+    flex: auto;
+    display: flex;
+    flex-direction: row;
+    padding: 1em 1em 1em 0em;
+}
+
+.volume-control label {
+    flex: 9em;
+    line-height: $thumb-height / 2;
+}
+
+.volume-control input[type=range] {
+    border: none;
+    padding: 0;
+    margin: 0;
+    flex: auto;
+}
+
+.button-group {
+    padding-top: 1em;
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.volume-controls button {
+    //@include shadow($thumb-shadow-size, $thumb-shadow-blur, $thumb-shadow-color);
+    @include shadow($track-shadow-size, $track-shadow-blur, $track-shadow-color);
+    flex: auto;
+    color: $button-text-color;
+    font-family: inherit;
+    font-size: 100%;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    padding: 0.5em 1em;
+    background-color: $track-color;
+    border: 1px solid $button-border-color;
+    text-decoration: none;
+    // border-radius: 2px;
+}
+
+.volume-controls button:active {
+    background-color: $thumb-color;
+}
