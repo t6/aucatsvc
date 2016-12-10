@@ -151,8 +151,10 @@ class Piano {
 	div.classList = "piano";
 	this.div = div;
 
-	let pianoKeys = document.createElement("p");
+	let pianoKeys = document.createElement("div");
 	pianoKeys.classList = "piano-keys";
+	this.pianoKeys = pianoKeys;
+	this.zoomLevel = 2;
 
 	this.shift = 36;
 	for (let i = 0; i < 127; i++) {
@@ -212,8 +214,14 @@ class Piano {
 	shiftUpBtn.innerText = "+";
 	let shiftDownBtn = document.createElement("button");
 	shiftDownBtn.innerText = "-";
+	let zoomInBtn = document.createElement("button");
+	zoomInBtn.innerText = "Z+";
+	let zoomOutBtn = document.createElement("button");
+	zoomOutBtn.innerText = "Z-";
 	btnGroup.appendChild(shiftUpBtn);
 	btnGroup.appendChild(shiftDownBtn);
+	btnGroup.appendChild(zoomInBtn);
+	btnGroup.appendChild(zoomOutBtn);
 	div.appendChild(btnGroup);
 
 	div.appendChild(pianoKeys);
@@ -224,8 +232,40 @@ class Piano {
 	shiftDownBtn.addEventListener("click", e => {
 	    this.notesDown();
 	});
+	zoomInBtn.addEventListener("click", e => {
+	    this.zoomInKeys();
+	});
+	zoomOutBtn.addEventListener("click", e => {
+	    this.zoomOutKeys();
+	});
     }
 
+    zoomKeys(level) {
+	if (level > 3) {
+	    level = 3;
+	} else if (level < 1) {
+	    level = 1;
+	}
+	
+	if (level == 1) {
+	    this.pianoKeys.classList = "piano-keys piano-keys-zoom1";
+	} else if (level == 2) {
+	    this.pianoKeys.classList = "piano-keys";	    
+	} else if (level == 3) {
+	    this.pianoKeys.classList = "piano-keys piano-keys-zoom3";
+	}
+
+	this.zoomLevel = level;
+    }
+
+    zoomInKeys() {
+	this.zoomKeys(this.zoomLevel + 1);
+    }
+
+    zoomOutKeys() {
+	this.zoomKeys(this.zoomLevel - 1);
+    }
+    
     notesDown() {
 	this.shift -= 12;
 	if (this.shift < 0)
