@@ -25,8 +25,9 @@
 #include <sys/capsicum.h>
 #endif
 
+#include <sndio.h>
+
 #include "assets.h"
-#include "aucatctl.h"
 
 #define SYSEX_START 0xf0
 #define SYSEX_END 0xf7
