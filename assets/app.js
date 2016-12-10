@@ -150,7 +150,7 @@ class Piano {
 	let pianoKeys = document.createElement("div");
 	pianoKeys.classList = "piano-keys";
 	this.pianoKeys = pianoKeys;
-	this.zoomLevel = 4;
+	this.zoomLevel = 7;
 	this.shift = 0;
 
 	// Create more keys than we have.  These look better than
@@ -284,7 +284,8 @@ class Piano {
     }
 
     zoomAndShiftKeys(level, shift) {
-	let levels = [0.33, 0.5, 0.67, 0.75, 1, 1.33, 1.5, 1.67, 1.75, 2];
+	let levels = [0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75,
+		      1, 1.33, 1.5, 1.67, 1.75, 2];
 	if (shift < 0)
 	    shift = 0;
 	else if (shift > 70)
@@ -599,23 +600,6 @@ class MIDIControlProcessor extends MIDIProcessor {
 	if (data.cmd == EV_CTL) {
 	    slot = data.ch;
 	    volume = data.v1;
-	    console.log(data);
-	} else if (data.cmd == EV_NON) {
-	    let event = new CustomEvent("NoteOn", {
-		detail: {
-		    note: data.note,
-		    velocity: data.velocity
-		}
-	    });
-	    document.dispatchEvent(event);
-	} else if (data.cmd == EV_NOFF) {
-	    let event = new CustomEvent("NoteOff", {
-		detail: {
-		    note: data.note,
-		    velocity: data.velocity
-		}
-	    });
-	    document.dispatchEvent(event);
 	} else if (data.length == 18 &&
 		   data[0] == SYSEX_START &&
 		   data[1] == SYSEX_TYPE_EDU &&
@@ -661,6 +645,38 @@ class MIDIControlProcessor extends MIDIProcessor {
 	    }
 	});
 	document.dispatchEvent(event);
+    }
+}
+
+class MIDIEventProcessor extends MIDIProcessor {
+    constructor() {
+	super("MIDIMessage");
+    }
+
+    onMIDIEvent(data) {
+	if (data.cmd == EV_CTL) {
+	    // slot = data.ch;
+	    // volume = data.v1;
+	} else if (data.cmd == EV_NON) {
+	    let event = new CustomEvent("NoteOn", {
+		detail: {
+		    note: data.note,
+		    velocity: data.velocity
+		}
+	    });
+	    document.dispatchEvent(event);
+	} else if (data.cmd == EV_NOFF) {
+	    let event = new CustomEvent("NoteOff", {
+		detail: {
+		    note: data.note,
+		    velocity: data.velocity
+		}
+	    });
+	    document.dispatchEvent(event);
+	} else {
+	    console.log("Unhandled message type:", data);
+	    return;
+	}
     }
 }
 
@@ -720,6 +736,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let ctlconn = new Connection("MIDIControlMessage", "wss://thor:8888/aucat");
     let conn = new Connection("MIDIMessage", "wss://thor:8888/midi");
     let midi = new MIDIControlProcessor();
+    new MIDIEventProcessor();
     let ctls = new VolumeControls();
     let app = document.getElementById("app");
     app.appendChild(ctls.element);
