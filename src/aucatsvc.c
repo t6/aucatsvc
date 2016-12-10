@@ -32,8 +32,6 @@
 #define SYSEX_START 0xf0
 #define SYSEX_END 0xf7
 #define SYSEX_TYPE_EDU 0x7d
-#define SYSEX_AUCATSVC 0x24
-#define SYSEX_AUCATSVC_MIXERVOL 0x01
 
 int init(int);
 int serve_index(struct http_request *);
@@ -66,7 +64,6 @@ struct kore_wscbs midi_wscbs = {
 	websocket_disconnect
 };
 
-static int mixerfd = -1;
 static struct mio_hdl *aucat_hdl = NULL, *midi_hdl = NULL;
 struct kore_task aucat_reader_task, aucat_writer_task;
 struct kore_task midi_reader_task, midi_writer_task;
@@ -74,36 +71,12 @@ struct kore_task midi_reader_task, midi_writer_task;
 int
 init(int state)
 {
-#ifdef KORE_MODULE_ENTER_SANDBOX
-	cap_rights_t rights;
-	const unsigned long ioctls[] = {
-		MIXER_READ(OSS_MIXER_CHANNEL),
-		MIXER_WRITE(OSS_MIXER_CHANNEL),
-	};
-#endif
-
 	switch (state) {
 	case KORE_MODULE_LOAD:
 		/* only do this in 1 worker */
 		if (worker->id != 1)
 			return (KORE_RESULT_OK);
 
-		mixerfd = open("/dev/mixer", O_RDWR | O_CLOEXEC);
-		if (mixerfd < 0) {
-			kore_log(LOG_WARNING, "open: %s", strerror(errno));
-			return (KORE_RESULT_ERROR);
-		}
-#ifdef KORE_MODULE_ENTER_SANDBOX
-		cap_rights_init(&rights, CAP_IOCTL);
-		if (cap_rights_limit(mixerfd, &rights) < 0) {
-			kore_log(LOG_WARNING, "cap_rights_limit: %s", strerror(errno));
-			return (KORE_RESULT_ERROR);
-		}
-		if (cap_ioctls_limit(mixerfd, ioctls, nitems(ioctls)) < 0) {
-			kore_log(LOG_WARNING, "cap_ioctls_limit: %s", strerror(errno));
-			return (KORE_RESULT_ERROR);
-		}
-#endif
 		aucat_hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
 		if (aucat_hdl == NULL) {
 			kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
@@ -136,7 +109,6 @@ init(int state)
 		break;
 	case KORE_MODULE_UNLOAD:
 		if (worker->id == 1) {
-			close(mixerfd);
 			mio_close(aucat_hdl);
 			mio_close(midi_hdl);
 		}
@@ -214,7 +186,6 @@ aucat_writer(struct kore_task *t)
 	u_int8_t buf[188];
 	u_int32_t sz;
 	ssize_t ret;
-	int mixervol;
 
 	for (;;) {
 		sz = kore_task_channel_read(t, &buf, sizeof(buf));
@@ -224,32 +195,12 @@ aucat_writer(struct kore_task *t)
 		}
 
 		kore_log(LOG_DEBUG, "aucat_writer: read %d bytes", sz);
-		if (sz == 7 &&
-		    buf[0] == SYSEX_START &&
-		    buf[1] == SYSEX_TYPE_EDU &&
-		    buf[2] == 0 &&
-		    buf[3] == SYSEX_AUCATSVC &&
-		    buf[4] == SYSEX_AUCATSVC_MIXERVOL &&
-		    buf[6] == SYSEX_END) {
-			mixervol = (int)buf[5];
-			if (mixervol < 0)
-				mixervol = 0;
-			if (mixervol > 127)
-				mixervol = 127;
-			mixervol = 100.0*mixervol/127;
-			kore_log(LOG_DEBUG, "aucat_writer: new mixer setting: %d", mixervol);
-			mixervol = mixervol | (mixervol << 8);
-			if (ioctl(mixerfd, MIXER_WRITE(OSS_MIXER_CHANNEL), &mixervol) < 0) {
-				kore_log(LOG_WARNING, "MIXER_WRITE: %s", strerror(errno));
-			}
-		} else {
-			ret = mio_write(aucat_hdl, buf, sz);
-			if (ret <= 0 || ret < sz) {
-				/* that's it */
-				return (KORE_RESULT_ERROR);
-			}
-			kore_log(LOG_DEBUG, "aucat_writer: wrote %d bytes", ret);
+		ret = mio_write(aucat_hdl, buf, sz);
+		if (ret <= 0 || ret < sz) {
+			/* that's it */
+			return (KORE_RESULT_ERROR);
 		}
+		kore_log(LOG_DEBUG, "aucat_writer: wrote %d bytes", ret);
 	}
 
 	return (KORE_RESULT_OK);
@@ -260,7 +211,6 @@ aucat_reader(struct kore_task *t)
 {
 	u_int8_t buf[188];
 	ssize_t ret;
-	int mixervol = -1, oldmixervol = -1;
 
 	for (;;) {
 		ret = mio_read(aucat_hdl, buf, sizeof(buf));
@@ -271,22 +221,6 @@ aucat_reader(struct kore_task *t)
 
 		//kore_log(LOG_DEBUG, "aucat_reader: got %ld bytes from pipe", ret);
 		kore_task_channel_write(t, buf, ret);
-
-		if (ioctl(mixerfd, MIXER_READ(OSS_MIXER_CHANNEL), &mixervol) < 0) {
-			kore_log(LOG_WARNING, "MIXER_READ: %s", strerror(errno));
-			return (KORE_RESULT_ERROR);
-		}
-		if (oldmixervol == -1 || oldmixervol != mixervol) {
-			oldmixervol = mixervol;
-			buf[0] = SYSEX_START;
-			buf[1] = SYSEX_TYPE_EDU;
-			buf[2] = 0;
-			buf[3] = SYSEX_AUCATSVC;
-			buf[4] = SYSEX_AUCATSVC_MIXERVOL;
-			buf[5] = 127.0*(mixervol & 0x7f)/100;
-			buf[6] = SYSEX_END;
-			kore_task_channel_write(t, buf, 7);
-		}
 	}
 
 	return (KORE_RESULT_OK);

@@ -96,9 +96,6 @@ const SYSEX_AUCAT_SLOTDESC = 0x01;
 const SYSEX_AUCAT_DUMPREQ = 0x02;
 const SYSEX_AUCAT_DUMPEND = 0x03;
 
-const SYSEX_AUCATSVC = 0x24;
-const SYSEX_AUCATSVC_MIXERVOL = 0x01;
-
 const SYSEX_START = 0xf0;
 const MIDI_QFRAME = 0xf1;
 const SYSEX_STOP = 0xf7;
@@ -134,7 +131,6 @@ const EV_BEND = 0xe; // MIDI pitch bend
 const EV_PAT0 = 0x10; // user sysex pattern
 const EV_NUMCMD = EV_PAT0 + EV_NPAT;
 
-const MIXER = -2;
 const MASTER = -1;
 
 function logError(msg) {
@@ -325,7 +321,7 @@ class VolumeControls {
 	this.element = ctls;
 	ctls.classList = "volume-controls";
 
-	for (let slot = -2; slot < 8; slot++) {
+	for (let slot = -1; slot < 8; slot++) {
 	    let ctl = this.makeVolumeControl(slot);
 	    ctls.appendChild(ctl);
 	}
@@ -343,7 +339,6 @@ class VolumeControls {
 	ctls.appendChild(new Piano().element);
 
 	muteButton.addEventListener("click", e => {
-	    // Exclude virtual mixer slot
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
 		    detail: {
@@ -355,7 +350,6 @@ class VolumeControls {
 	    }
 	});
 	maxButton.addEventListener("click", e => {
-	    // Exclude virtual mixer slot
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
 		    detail: {
@@ -380,9 +374,7 @@ class VolumeControls {
 	let label = document.createElement("label");
 	let input = document.createElement("input");
 	let name;
-	if (slot == MIXER) {
-	    name = "mixer";
-	} else if (slot == MASTER) {
+	if (slot == MASTER) {
 	    name = "master";
 	} else {
 	    name = "slot" + slot;
@@ -415,9 +407,7 @@ class VolumeControls {
     }
 
     getSlotElement(slot, child) {
-	if (slot == MIXER) {
-	    name = "mixer";
-	} else if (slot == MASTER) {
+	if (slot == MASTER) {
 	    name = "master";
 	} else {
 	    name = "slot" + slot;
@@ -536,10 +526,6 @@ class MIDIProcessor {
 	if (slot == MASTER) {
 	    return new Uint8Array([SYSEX_START, SYSEX_TYPE_RT, 0,
 				   SYSEX_CONTROL, SYSEX_MASTER, 0, vol, SYSEX_STOP]);
-	} else if (slot == MIXER) {
-	    return new Uint8Array([SYSEX_START, SYSEX_TYPE_EDU, 0,
-				   SYSEX_AUCATSVC, SYSEX_AUCATSVC_MIXERVOL,
-				   vol, SYSEX_STOP]);
 	} else {
 	    return new Uint8Array([MIDI_CTL | slot, MIDI_CTLVOL, vol]);
 	}
@@ -606,15 +592,6 @@ class MIDIControlProcessor extends MIDIProcessor {
 	    });
 	    document.dispatchEvent(event);
 	    return;
-	} else if (data.length == 7 &&
-		   data[0] == SYSEX_START &&
-		   data[1] == SYSEX_TYPE_EDU &&
-		   data[2] == 0 &&
-		   data[3] == SYSEX_AUCATSVC &&
-		   data[4] == SYSEX_AUCATSVC_MIXERVOL &&
-		   data[6] == SYSEX_STOP) {
-	    slot = MIXER;
-	    volume = data[5];
 	} else if (data.length == 8 &&
 		   data[0] == SYSEX_START &&
 		   data[1] == SYSEX_TYPE_RT &&
@@ -692,12 +669,9 @@ class Connection {
     }
 };
 
-
-var conn;
-
 document.addEventListener("DOMContentLoaded", function() {
     let ctlconn = new Connection("MIDIControlMessage", "wss://thor:8888/aucat");
-    conn = new Connection("MIDIMessage", "wss://thor:8888/midi");
+    let conn = new Connection("MIDIMessage", "wss://thor:8888/midi");
     let midi = new MIDIControlProcessor();
     let ctls = new VolumeControls();
     let app = document.getElementById("app");
