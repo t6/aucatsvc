@@ -161,8 +161,8 @@ class Piano {
 	    let key = document.createElement("div");
 	    key.classList = this.keyClass(i);
 	    key.note = i;
-	    let noteOn = e => { e.preventDefault(); this.noteOn(key); };
-	    let noteOff = e => { this.noteOff(key); };
+	    let noteOn = e => { e.preventDefault(); this.noteOn(e.target); };
+	    let noteOff = e => { this.noteOff(e.target); };
 	    key.addEventListener("mousedown", noteOn);
 	    /*
 	     * When the mouse button is released and the pointer leaves
@@ -177,9 +177,34 @@ class Piano {
 	    });
 	    key.addEventListener("mouseup", noteOff);
 	    key.addEventListener("touchstart", noteOn);
-	    key.addEventListener("touchend", noteOff);
+	    key.addEventListener("touchend", e => {
+		this.noteOff(e.target);
+		/* See below in "touchmove" */
+		pianoKeys.querySelectorAll(".piano-key-touch-move").forEach(
+		    x => this.noteOff(x));
+	    });
 	    pianoKeys.appendChild(key);
 	}
+
+	pianoKeys.addEventListener("touchmove", e => {
+	    if (e.touches.length === 1) {
+		let key = document.elementFromPoint(
+		    e.touches[0].clientX, e.touches[0].clientY);
+		if (key && key.parentElement == pianoKeys &&
+		    key.classList.contains("piano-key") &&
+		    !key.classList.contains("piano-key-pressed")) {
+		    pianoKeys.querySelectorAll(".piano-key-pressed").forEach(
+			x => this.noteOff(x));
+		    /*
+		     * Hack to turn the last key off again when the
+		     * touch movement over multiple keys ends.  Also
+		     * see "touchend" above and Piano.noteOff() below.
+		     */
+		    key.classList.add("piano-key-touch-move");
+		    this.noteOn(key);
+		}
+	    }
+	});
 
 	let btnGroup = document.createElement("div");
 	btnGroup.classList = "button-group";
@@ -229,6 +254,7 @@ class Piano {
 
     noteOff(key) {
 	key.classList.remove("piano-key-pressed");
+	key.classList.remove("piano-key-touch-move");
 	let note = key.note + this.shift;
 	if (note > 127) return;
 	let event = new CustomEvent("NoteOffRequest", {
