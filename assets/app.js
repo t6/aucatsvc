@@ -145,9 +145,115 @@ function logError(msg) {
     }
 }
 
+class Piano {
+    constructor() {
+	let div = document.createElement("div");
+	div.classList = "piano";
+	this.div = div;
+
+	let pianoKeys = document.createElement("p");
+	pianoKeys.classList = "piano-keys";
+
+	this.shift = 36;
+	for (let i = 0; i < 127; i++) {
+	    let key = document.createElement("div");
+	    key.classList = this.keyClass(i);
+	    let noteOn = e => {
+		e.preventDefault();
+		key.classList = this.keyClass(i) + " piano-key-pressed";
+		{
+		    let event = new CustomEvent("ProgramChangeRequest", {
+			detail: {
+			    channel: 0,
+			    program: 1
+			}
+		    });
+		    document.dispatchEvent(event);
+		}
+		let note = i + this.shift;
+		if (note > 127) return;
+		let event = new CustomEvent("NoteOnRequest", {
+		    detail: {
+			channel: 0,
+			note: note,
+			velocity: 127
+		    }
+		});
+		document.dispatchEvent(event);
+	    };
+	    let noteOff = e => {
+		key.classList = this.keyClass(i);
+		let note = i + this.shift;
+		if (note > 127) return;
+		let event = new CustomEvent("NoteOffRequest", {
+		    detail: {
+			channel: 0,
+			note: note,
+			velocity: 127
+		    }
+		});
+		document.dispatchEvent(event);
+	    };
+	    key.addEventListener("mousedown", noteOn);
+	    /* 
+	     * When the mouse button is released and the pointer leaves
+	     * the element send a note off event
+	     */
+	    key.addEventListener("mouseout", noteOff);
+	    key.addEventListener("mouseup", noteOff);
+	    key.addEventListener("touchstart", noteOn);
+	    key.addEventListener("touchend", noteOff);
+	    pianoKeys.appendChild(key);
+	}
+
+	let btnGroup = document.createElement("div");
+	btnGroup.classList = "button-group";
+	let shiftUpBtn = document.createElement("button");
+	shiftUpBtn.innerText = "+";
+	let shiftDownBtn = document.createElement("button");
+	shiftDownBtn.innerText = "-";
+	btnGroup.appendChild(shiftUpBtn);
+	btnGroup.appendChild(shiftDownBtn);
+	div.appendChild(btnGroup);
+
+	div.appendChild(pianoKeys);
+
+	shiftUpBtn.addEventListener("click", e => {
+	    this.notesUp();
+	});
+	shiftDownBtn.addEventListener("click", e => {
+	    this.notesDown();
+	});
+    }
+
+    notesDown() {
+	this.shift -= 12;
+	if (this.shift < 0)
+	    this.shift = 0;
+    }
+
+    notesUp() {
+	this.shift += 12;
+	if (this.shift > (127 - 12))
+	    this.shift = 127 - 12;
+    }
+
+    keyClass(k) {
+	var n = {
+	    1: 1, 3: 3, 6: 1, 8: 2, 10: 3
+	}[(k % 12) + (k < 0 ? 12 : 0)];
+	if (n !== undefined)
+	    return "piano-key piano-key-black piano-key-black" + n;
+	return "piano-key";
+    }
+
+    get element() {
+	return this.div;
+    }
+}
+
 class VolumeControls {
-    constructor(connection) {
-	this.connection = connection;
+    constructor() {
 	let ctls = document.createElement("div");
 	this.element = ctls;
 	ctls.classList = "volume-controls";
@@ -159,25 +265,22 @@ class VolumeControls {
 
 	let buttonGroup = document.createElement("div");
 	buttonGroup.classList = "button-group";
-
 	let muteButton = document.createElement("button");
 	muteButton.innerText = "Mute all";
-
 	let maxButton = document.createElement("button");
 	maxButton.innerText = "Max all";
-
-	let noteOnButton = document.createElement("button");
-	noteOnButton.innerText = "ON";
-	let noteOffButton = document.createElement("button");
-	noteOffButton.innerText = "OFF";
-
 	buttonGroup.appendChild(muteButton);
 	buttonGroup.appendChild(maxButton);
-	buttonGroup.appendChild(noteOnButton);
-	buttonGroup.appendChild(noteOffButton);
-
 	ctls.appendChild(buttonGroup);
 
+	// let piano = document.createElement("div");
+	// piano.classList = "piano";
+	// for (let note = 0; note < 127; note++) {	    
+	//     let btn = this.makePianoButton(note);
+	//     piano.appendChild(btn);
+	// }
+	ctls.appendChild(new Piano(24).element);
+	
 	muteButton.addEventListener("click", e => {
 	    // Exclude virtual mixer slot
 	    for (let slot = -1; slot < 8; slot++) {
@@ -203,33 +306,39 @@ class VolumeControls {
 	    }
 	});
 
-	noteOnButton.addEventListener("click", e => {
-	    let event = new CustomEvent("NoteOnRequest", {
-		detail: {
-		    channel: 4,
-		    note: 50,
-		    velocity: 100
-		}
-	    });
-	    document.dispatchEvent(event);
-	});
-	noteOffButton.addEventListener("click", e => {
-	    let event = new CustomEvent("NoteOffRequest", {
-		detail: {
-		    channel: 4,
-		    note: 50,
-		    velocity: 100
-		}
-	    });
-	    document.dispatchEvent(event);
-	});
-
 	document.addEventListener("VolumeChanged", e => {
 	    this.onVolumeChange(e.detail.slot, e.detail.volume)
 	});
 	document.addEventListener("SlotDescription", e => {
 	    this.onSlotDescription(e.detail.slot, e.detail.description)
 	});
+    }
+
+    makePianoButton(note) {
+	let btn = document.createElement("button");
+	btn.innerText = note;
+	btn.classList = "note" + note;
+	btn.addEventListener("touchstart", e => {
+	    {
+		let event = new CustomEvent("ProgramChangeRequest", {
+		    detail: {
+			channel: 0,
+			program: 1
+		    }
+		});
+		document.dispatchEvent(event);
+	    }
+	    let event = new CustomEvent("NoteOnRequest", {
+		detail: {
+		    channel: 0,
+		    note: note,
+		    velocity: 127
+		}
+	    });
+	    document.dispatchEvent(event);
+	});
+
+	return btn;
     }
 
     makeVolumeControl(slot) {
@@ -426,20 +535,6 @@ class MIDIProcessor {
     static noteOffMsg(channel, note, delay) {
         return new Uint8Array([0x80 + channel, note, 0]);
     }
-
-    // static chordOn(channel, chord, velocity) {
-    //     for (var n = 0; n < chord.length; n ++) {
-    //         var note = chord[n];
-    //         output.send([0x90 + channel, note, velocity], delay * 1000);
-    //     }
-    // }
-
-    // static chordOff = function(channel, chord, delay) {
-    //     for (var n = 0; n < chord.length; n ++) {
-    //         var note = chord[n];
-    //         output.send([0x80 + channel, note, 0], delay * 1000);
-    //     }
-    // }
 }
 
 class MIDIControlProcessor extends MIDIProcessor {
@@ -578,21 +673,28 @@ document.addEventListener("DOMContentLoaded", function() {
 	let msg = MIDIProcessor.volumeChangeMsg(
 	    e.detail.slot, e.detail.volume);
 	if (!ctlconn.send(msg)) {
-	    logError("unable to send message");
+	    logError("unable to change volume");
 	}
     });
     document.addEventListener("NoteOnRequest", e => {
 	let msg = MIDIProcessor.noteOnMsg(
 	    e.detail.channel, e.detail.note, e.detail.velocity);
 	if (!conn.send(msg)) {
-	    logError("unable to send message");
+	    logError("unable to turn on note");
 	}
     });
     document.addEventListener("NoteOffRequest", e => {
 	let msg = MIDIProcessor.noteOffMsg(
 	    e.detail.channel, e.detail.note, e.detail.velocity);
 	if (!conn.send(msg)) {
-	    logError("unable to send message");
+	    logError("unable to turn off note");
+	}
+    });
+    document.addEventListener("ProgramChangeRequest", e => {
+	let msg = MIDIProcessor.programChangeMsg(
+	    e.detail.channel, e.detail.program);
+	if (!conn.send(msg)) {
+	    logError("unable to change program");
 	}
     });
     ctlconn.open();
