@@ -163,11 +163,18 @@ class VolumeControls {
 	let muteButton = document.createElement("button");
 	muteButton.innerText = "Mute all";
 
-	let allHighButton = document.createElement("button");
-	allHighButton.innerText = "All high";
+	let maxButton = document.createElement("button");
+	maxButton.innerText = "Max all";
+
+	let noteOnButton = document.createElement("button");
+	noteOnButton.innerText = "ON";
+	let noteOffButton = document.createElement("button");
+	noteOffButton.innerText = "OFF";
 
 	buttonGroup.appendChild(muteButton);
-	buttonGroup.appendChild(allHighButton);
+	buttonGroup.appendChild(maxButton);
+	buttonGroup.appendChild(noteOnButton);
+	buttonGroup.appendChild(noteOffButton);
 
 	ctls.appendChild(buttonGroup);
 
@@ -183,7 +190,7 @@ class VolumeControls {
 		document.dispatchEvent(event);
 	    }
 	});
-	allHighButton.addEventListener("click", e => {
+	maxButton.addEventListener("click", e => {
 	    // Exclude virtual mixer slot
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
@@ -194,6 +201,27 @@ class VolumeControls {
 		});
 		document.dispatchEvent(event);
 	    }
+	});
+
+	noteOnButton.addEventListener("click", e => {
+	    let event = new CustomEvent("NoteOnRequest", {
+		detail: {
+		    channel: 4,
+		    note: 50,
+		    velocity: 100
+		}
+	    });
+	    document.dispatchEvent(event);
+	});
+	noteOffButton.addEventListener("click", e => {
+	    let event = new CustomEvent("NoteOffRequest", {
+		detail: {
+		    channel: 4,
+		    note: 50,
+		    velocity: 100
+		}
+	    });
+	    document.dispatchEvent(event);
 	});
 
 	document.addEventListener("VolumeChanged", e => {
@@ -535,8 +563,12 @@ class Connection {
     }
 };
 
+
+var conn;
+
 document.addEventListener("DOMContentLoaded", function() {
-    let conn = new Connection("MIDIControlMessage", "wss://127.0.0.1:8888/aucat");
+    let ctlconn = new Connection("MIDIControlMessage", "wss://thor:8888/aucat");
+    conn = new Connection("MIDIMessage", "wss://thor:8888/midi");
     let midi = new MIDIControlProcessor();
     let ctls = new VolumeControls();
     let app = document.getElementById("app");
@@ -545,9 +577,24 @@ document.addEventListener("DOMContentLoaded", function() {
     document.addEventListener("VolumeChangeRequest", e => {
 	let msg = MIDIProcessor.volumeChangeMsg(
 	    e.detail.slot, e.detail.volume);
+	if (!ctlconn.send(msg)) {
+	    logError("unable to send message");
+	}
+    });
+    document.addEventListener("NoteOnRequest", e => {
+	let msg = MIDIProcessor.noteOnMsg(
+	    e.detail.channel, e.detail.note, e.detail.velocity);
 	if (!conn.send(msg)) {
 	    logError("unable to send message");
 	}
     });
+    document.addEventListener("NoteOffRequest", e => {
+	let msg = MIDIProcessor.noteOffMsg(
+	    e.detail.channel, e.detail.note, e.detail.velocity);
+	if (!conn.send(msg)) {
+	    logError("unable to send message");
+	}
+    });
+    ctlconn.open();
     conn.open();
 });

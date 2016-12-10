@@ -39,24 +39,35 @@ int serve_index(struct http_request *);
 int serve_app_js(struct http_request *);
 int serve_app_css(struct http_request *);
 int serve_aucat(struct http_request *);
+int serve_midi(struct http_request *);
 
 void websocket_connect(struct connection *);
 void websocket_disconnect(struct connection *);
-void websocket_message(struct connection *, u_int8_t, void *, size_t);
+void websocket_aucat_message(struct connection *, u_int8_t, void *, size_t);
+void websocket_midi_message(struct connection *, u_int8_t, void *, size_t);
 
+int aucat_writer(struct kore_task *);
+int aucat_reader(struct kore_task *);
 int midi_writer(struct kore_task *);
 int midi_reader(struct kore_task *);
-void midi_data_available(struct kore_task *);
+void data_available(struct kore_task *);
 
 /* Websocket callbacks. */
-struct kore_wscbs wscbs = {
+struct kore_wscbs aucat_wscbs = {
 	websocket_connect,
-	websocket_message,
+	websocket_aucat_message,
+	websocket_disconnect
+};
+
+struct kore_wscbs midi_wscbs = {
+	websocket_connect,
+	websocket_midi_message,
 	websocket_disconnect
 };
 
 static int mixerfd = -1;
-static struct mio_hdl *hdl = NULL;
+static struct mio_hdl *aucat_hdl = NULL, *midi_hdl = NULL;
+struct kore_task aucat_reader_task, aucat_writer_task;
 struct kore_task midi_reader_task, midi_writer_task;
 
 int
@@ -92,21 +103,32 @@ init(int state)
 			return (KORE_RESULT_ERROR);
 		}
 #endif
-		hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
-		if (hdl == NULL) {
+		aucat_hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
+		if (aucat_hdl == NULL) {
 			kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
 			return (KORE_RESULT_ERROR);
 		}
 
-		kore_task_create(&midi_reader_task, midi_reader);
-		kore_task_bind_callback(&midi_reader_task, midi_data_available);
+		midi_hdl = mio_open(MIDIDEVICE, MIO_OUT | MIO_IN, 0);
+		if (midi_hdl == NULL) {
+			kore_log(LOG_WARNING, "unable to open %s", MIDIDEVICE);
+			return (KORE_RESULT_ERROR);
+		}
 
+		kore_task_create(&aucat_reader_task, aucat_reader);
+		kore_task_bind_callback(&aucat_reader_task, data_available);
+		kore_task_create(&aucat_writer_task, aucat_writer);
+
+		kore_task_create(&midi_reader_task, midi_reader);
+		kore_task_bind_callback(&midi_reader_task, data_available);
 		kore_task_create(&midi_writer_task, midi_writer);
 #ifdef KORE_MODULE_ENTER_SANDBOX
 		break;
 	case KORE_MODULE_ENTER_SANDBOX:
 #endif
 		if (worker->id == 1) {
+			kore_task_run(&aucat_reader_task);
+			kore_task_run(&aucat_writer_task);
 			kore_task_run(&midi_reader_task);
 			kore_task_run(&midi_writer_task);
 		}
@@ -114,7 +136,8 @@ init(int state)
 	case KORE_MODULE_UNLOAD:
 		if (worker->id == 1) {
 			close(mixerfd);
-			mio_close(hdl);
+			mio_close(aucat_hdl);
+			mio_close(midi_hdl);
 		}
 		break;
 	}
@@ -153,7 +176,13 @@ websocket_connect(struct connection *c)
 }
 
 void
-websocket_message(struct connection *c, u_int8_t op, void *data, size_t len)
+websocket_aucat_message(struct connection *c, u_int8_t op, void *data, size_t len)
+{
+	kore_task_channel_write(&aucat_writer_task, data, len);
+}
+
+void
+websocket_midi_message(struct connection *c, u_int8_t op, void *data, size_t len)
 {
 	kore_task_channel_write(&midi_writer_task, data, len);
 }
@@ -167,12 +196,19 @@ websocket_disconnect(struct connection *c)
 int
 serve_aucat(struct http_request *req)
 {
-	kore_websocket_handshake(req, &wscbs);
+	kore_websocket_handshake(req, &aucat_wscbs);
 	return (KORE_RESULT_OK);
 }
 
 int
-midi_writer(struct kore_task *t)
+serve_midi(struct http_request *req)
+{
+	kore_websocket_handshake(req, &midi_wscbs);
+	return (KORE_RESULT_OK);
+}
+
+int
+aucat_writer(struct kore_task *t)
 {
 	u_int8_t buf[188];
 	u_int32_t sz;
@@ -182,11 +218,11 @@ midi_writer(struct kore_task *t)
 	for (;;) {
 		sz = kore_task_channel_read(t, &buf, sizeof(buf));
 		if (sz > sizeof(buf)) {
-			kore_log(LOG_WARNING, "midi_writer: msg was too large, ignored");
+			kore_log(LOG_WARNING, "aucat_writer: msg was too large, ignored");
 			continue;
 		}
 
-		kore_log(LOG_DEBUG, "midi_writer: read %d bytes", sz);
+		kore_log(LOG_DEBUG, "aucat_writer: read %d bytes", sz);
 		if (sz == 7 &&
 		    buf[0] == SYSEX_START &&
 		    buf[1] == SYSEX_TYPE_EDU &&
@@ -200,18 +236,18 @@ midi_writer(struct kore_task *t)
 			if (mixervol > 127)
 				mixervol = 127;
 			mixervol = 100.0*mixervol/127;
-			kore_log(LOG_DEBUG, "midi_writer: new mixer setting: %d", mixervol);
+			kore_log(LOG_DEBUG, "aucat_writer: new mixer setting: %d", mixervol);
 			mixervol = mixervol | (mixervol << 8);
 			if (ioctl(mixerfd, MIXER_WRITE(OSS_MIXER_CHANNEL), &mixervol) < 0) {
 				kore_log(LOG_WARNING, "MIXER_WRITE: %s", strerror(errno));
 			}
 		} else {
-			ret = mio_write(hdl, buf, sz);
+			ret = mio_write(aucat_hdl, buf, sz);
 			if (ret <= 0 || ret < sz) {
 				/* that's it */
 				return (KORE_RESULT_ERROR);
 			}
-			kore_log(LOG_DEBUG, "midi_writer: wrote %d bytes", ret);
+			kore_log(LOG_DEBUG, "aucat_writer: wrote %d bytes", ret);
 		}
 	}
 
@@ -219,20 +255,20 @@ midi_writer(struct kore_task *t)
 }
 
 int
-midi_reader(struct kore_task *t)
+aucat_reader(struct kore_task *t)
 {
 	u_int8_t buf[188];
 	ssize_t ret;
 	int mixervol = -1, oldmixervol = -1;
 
 	for (;;) {
-		ret = mio_read(hdl, buf, sizeof(buf));
+		ret = mio_read(aucat_hdl, buf, sizeof(buf));
 		if (ret <= 0) {
 			/* that's it */
 			return (KORE_RESULT_ERROR);
 		}
 
-		//kore_log(LOG_DEBUG, "midi_reader: got %ld bytes from pipe", ret);
+		//kore_log(LOG_DEBUG, "aucat_reader: got %ld bytes from pipe", ret);
 		kore_task_channel_write(t, buf, ret);
 
 		if (ioctl(mixerfd, MIXER_READ(OSS_MIXER_CHANNEL), &mixervol) < 0) {
@@ -255,8 +291,54 @@ midi_reader(struct kore_task *t)
 	return (KORE_RESULT_OK);
 }
 
+int
+midi_writer(struct kore_task *t)
+{
+	u_int8_t buf[188];
+	u_int32_t sz;
+	ssize_t ret;
+
+	for (;;) {
+		sz = kore_task_channel_read(t, &buf, sizeof(buf));
+		if (sz > sizeof(buf)) {
+			kore_log(LOG_WARNING, "midi_writer: msg was too large, ignored");
+			continue;
+		}
+
+		kore_log(LOG_DEBUG, "midi_writer: read %d bytes", sz);
+		ret = mio_write(midi_hdl, buf, sz);
+		if (ret <= 0 || ret < sz) {
+			/* that's it */
+			return (KORE_RESULT_ERROR);
+		}
+		kore_log(LOG_DEBUG, "midi_writer: wrote %d bytes", ret);
+	}
+
+	return (KORE_RESULT_OK);
+}
+
+int
+midi_reader(struct kore_task *t)
+{
+	u_int8_t buf[188];
+	ssize_t ret;
+
+	for (;;) {
+		ret = mio_read(midi_hdl, buf, sizeof(buf));
+		if (ret <= 0) {
+			/* that's it */
+			return (KORE_RESULT_ERROR);
+		}
+
+		//kore_log(LOG_DEBUG, "aucat_reader: got %ld bytes from pipe", ret);
+		kore_task_channel_write(t, buf, ret);
+	}
+
+	return (KORE_RESULT_OK);
+}
+
 void
-midi_data_available(struct kore_task *t)
+data_available(struct kore_task *t)
 {
 	size_t len;
 	u_int8_t buf[BUFSIZ];
