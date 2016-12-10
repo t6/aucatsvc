@@ -4,8 +4,14 @@
  * https://raw.githubusercontent.com/mrcoles/javascript-piano/master/piano.css
  */
 
+.piano {
+    overflow: hidden;
+}
+
 .piano-keys {
-    width: 100%;
+    transform: scale(1, 1) translate(0px);
+    transform-origin: left;
+    width: 10000%;
     white-space: nowrap;
     overflow: hidden;
     border-radius: 0 0 4px 4px;
@@ -19,14 +25,6 @@
     margin: 0 2px 2px 0;
     background: #fff;
     border-radius: 0 0 4px 4px;
-}
-
-.piano-keys-zoom1 .piano-key {
-    width: 30px;
-}
-
-.piano-keys-zoom3 .piano-key {
-    width: 65px;
 }
 
 .piano-key.piano-key-pressed, .piano-key:active {
@@ -61,16 +59,14 @@
     left: -16px;
 }
 
-.piano-keys-zoom1 .piano-key.piano-key-black:after {
-    width: 20px;
-    left: -12px;
-}
-
-.piano-keys-zoom3 .piano-key.piano-key-black:after {
-    width: 42px;
-    left: -23px;
-}
-
 .piano-key.piano-key-black.piano-key-pressed:after, .piano-key.piano-key-black:active:after {
     background-color: #222;
+}
+
+.piano-key.piano-key-disabled {
+    background-color: gray;
+}
+
+.piano-key.piano-key-highlight {
+    background-color: red;
 }

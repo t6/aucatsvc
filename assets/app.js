@@ -150,12 +150,17 @@ class Piano {
 	let pianoKeys = document.createElement("div");
 	pianoKeys.classList = "piano-keys";
 	this.pianoKeys = pianoKeys;
-	this.zoomLevel = 2;
+	this.zoomLevel = 4;
+	this.shift = 0;
 
-	this.shift = 36;
-	for (let i = 0; i < 127; i++) {
+	// Create more keys than we have.  These look better than
+	// empty space when the keyboard was shifted too much.
+	for (let i = 0; i < 1024; i++) {
 	    let key = document.createElement("div");
 	    key.classList = this.keyClass(i);
+	    key.classList.add("note-" + i);
+	    if (i > 127 || i < 0)
+		key.classList.add("piano-key-disabled");
 	    key.note = i;
 	    let noteOn = e => { e.preventDefault(); this.noteOn(e.target); };
 	    let noteOff = e => { this.noteOff(e.target); };
@@ -232,16 +237,32 @@ class Piano {
 	zoomOutBtn.addEventListener("click", e => {
 	    this.zoomOutKeys();
 	});
+
+	document.addEventListener("NoteOn", e => {
+	    let note = e.detail.note; // - this.shift;
+	    let key = pianoKeys.querySelector(".note-" + note);
+	    if (key) {
+		key.classList.add("piano-key-pressed");
+		key.classList.add("piano-key-highlight");
+	    }
+	});
+	document.addEventListener("NoteOff", e => {
+	    let note = e.detail.note; // - this.shift;
+	    let key = pianoKeys.querySelector(".note-" + note);
+	    if (key) {
+		key.classList.remove("piano-key-pressed");
+		key.classList.remove("piano-key-highlight");
+	    }
+	});
     }
 
     noteOn(key) {
 	key.classList.add("piano-key-pressed");
-	let note = key.note + this.shift;
-	if (note > 127) return;
+	if (key.note > 127) return;
 	let event = new CustomEvent("NoteOnRequest", {
 	    detail: {
 		channel: 0,
-		note: note,
+		note: key.note,
 		velocity: 127
 	    }
 	});
@@ -251,54 +272,56 @@ class Piano {
     noteOff(key) {
 	key.classList.remove("piano-key-pressed");
 	key.classList.remove("piano-key-touch-move");
-	let note = key.note + this.shift;
-	if (note > 127) return;
+	if (key.note > 127) return;
 	let event = new CustomEvent("NoteOffRequest", {
 	    detail: {
 		channel: 0,
-		note: note,
+		note: key.note,
 		velocity: 127
 	    }
 	});
 	document.dispatchEvent(event);
     }
 
-    zoomKeys(level) {
-	if (level > 3) {
-	    level = 3;
-	} else if (level < 1) {
-	    level = 1;
+    zoomAndShiftKeys(level, shift) {
+	let levels = [0.33, 0.5, 0.67, 0.75, 1, 1.33, 1.5, 1.67, 1.75, 2];
+	if (shift < 0)
+	    shift = 0;
+	else if (shift > 70)
+	    shift = 70;
+	if (level >= levels.length) {
+	    level = levels.length - 1;
+	} else if (level < 0) {
+	    level = 0;
 	}
 
-	if (level == 1) {
-	    this.pianoKeys.classList = "piano-keys piano-keys-zoom1";
-	} else if (level == 2) {
-	    this.pianoKeys.classList = "piano-keys";
-	} else if (level == 3) {
-	    this.pianoKeys.classList = "piano-keys piano-keys-zoom3";
-	}
-
+	this.shift = shift;
 	this.zoomLevel = level;
+
+	let d = 52 * this.shift;
+	let scaleX = levels[level];
+	this.pianoKeys.style.transform = "scale(" + scaleX + ", 1) translate(-" + d + "px)";
     }
 
     zoomInKeys() {
-	this.zoomKeys(this.zoomLevel + 1);
+	this.zoomAndShiftKeys(this.zoomLevel + 1, this.shift);
     }
 
     zoomOutKeys() {
-	this.zoomKeys(this.zoomLevel - 1);
+	this.zoomAndShiftKeys(this.zoomLevel - 1, this.shift);
+    }
+
+    shiftNotes(dir) {
+	let d = 52 * this.shift;
+	this.pianoKeys.style.transform = "scale(" + this.zoomLevel + ", 1) translate(-" + d + "px)";
     }
 
     notesDown() {
-	this.shift -= 12;
-	if (this.shift < 0)
-	    this.shift = 0;
+	this.zoomAndShiftKeys(this.zoomLevel, this.shift - 7);
     }
 
     notesUp() {
-	this.shift += 12;
-	if (this.shift > (127 - 12))
-	    this.shift = 127 - 12;
+	this.zoomAndShiftKeys(this.zoomLevel, this.shift + 7);
     }
 
     keyClass(k) {
@@ -439,7 +462,7 @@ class MIDIProcessor {
 
     eventLength(status) {
 	const evlen = [2, 2, 2, 2, 1, 1, 2, 0];
-	return evlen[(status >> 4) & 7];
+	return evlen[(status >>> 4) & 7];
     }
 
     /* This is an incomplete port of midish's mididev_inputcb() */
@@ -485,22 +508,29 @@ class MIDIProcessor {
 		if (this.icount == this.eventLength(this.istatus)) {
 		    this.icount = 0;
 
-		    let cmd = this.istatus >> 4;
+		    let cmd = (this.istatus >>> 4) >>> 0;
 		    let dev = 0; // unit
 		    let ch = this.istatus & 0x0f;
 		    if (cmd == EV_NON && this.idata[1] != 0) {
 			this.onMIDIEvent({
-			    cmd: EV_NOFF,
+			    cmd: cmd,
 			    ch: ch,
-			    note_num: this.idata[0],
-			    note_vel: EV_NOFF_DEFAULTVEL
+			    note: this.idata[0],
+			    velocity: EV_NOFF_DEFAULTVEL
+			});
+		    } else if (cmd == EV_NOFF) {
+			this.onMIDIEvent({
+			    cmd: cmd,
+			    ch: ch,
+			    note: this.idata[0],
+			    velocity: EV_NOFF_DEFAULTVEL
 			});
 		    } else if (cmd == EV_BEND) {
 			this.onMIDIEvent({
-			    cmd: EV_NOFF,
+			    cmd: cmd,
 			    ch: ch,
-			    bend_val: (this.idata[1] << 7) + this.idata[0],
-			    note_vel: EV_NOFF_DEFAULTVEL
+			    bend: (this.idata[1] << 7) + this.idata[0],
+			    velocity: EV_NOFF_DEFAULTVEL
 			});
 		    } else {
 			this.onMIDIEvent({
@@ -569,6 +599,23 @@ class MIDIControlProcessor extends MIDIProcessor {
 	if (data.cmd == EV_CTL) {
 	    slot = data.ch;
 	    volume = data.v1;
+	    console.log(data);
+	} else if (data.cmd == EV_NON) {
+	    let event = new CustomEvent("NoteOn", {
+		detail: {
+		    note: data.note,
+		    velocity: data.velocity
+		}
+	    });
+	    document.dispatchEvent(event);
+	} else if (data.cmd == EV_NOFF) {
+	    let event = new CustomEvent("NoteOff", {
+		detail: {
+		    note: data.note,
+		    velocity: data.velocity
+		}
+	    });
+	    document.dispatchEvent(event);
 	} else if (data.length == 18 &&
 		   data[0] == SYSEX_START &&
 		   data[1] == SYSEX_TYPE_EDU &&
