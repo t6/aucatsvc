@@ -160,48 +160,21 @@ class Piano {
 	for (let i = 0; i < 127; i++) {
 	    let key = document.createElement("div");
 	    key.classList = this.keyClass(i);
-	    let noteOn = e => {
-		e.preventDefault();
-		key.classList = this.keyClass(i) + " piano-key-pressed";
-		{
-		    let event = new CustomEvent("ProgramChangeRequest", {
-			detail: {
-			    channel: 0,
-			    program: 1
-			}
-		    });
-		    document.dispatchEvent(event);
-		}
-		let note = i + this.shift;
-		if (note > 127) return;
-		let event = new CustomEvent("NoteOnRequest", {
-		    detail: {
-			channel: 0,
-			note: note,
-			velocity: 127
-		    }
-		});
-		document.dispatchEvent(event);
-	    };
-	    let noteOff = e => {
-		key.classList = this.keyClass(i);
-		let note = i + this.shift;
-		if (note > 127) return;
-		let event = new CustomEvent("NoteOffRequest", {
-		    detail: {
-			channel: 0,
-			note: note,
-			velocity: 127
-		    }
-		});
-		document.dispatchEvent(event);
-	    };
+	    key.note = i;
+	    let noteOn = e => { e.preventDefault(); this.noteOn(key); };
+	    let noteOff = e => { this.noteOff(key); };
 	    key.addEventListener("mousedown", noteOn);
-	    /* 
+	    /*
 	     * When the mouse button is released and the pointer leaves
 	     * the element send a note off event
 	     */
 	    key.addEventListener("mouseout", noteOff);
+	    key.addEventListener("mouseover", e => {
+		if (e.buttons == 1) {
+		    e.preventDefault();
+		    this.noteOn(key);
+		}
+	    });
 	    key.addEventListener("mouseup", noteOff);
 	    key.addEventListener("touchstart", noteOn);
 	    key.addEventListener("touchend", noteOff);
@@ -222,9 +195,9 @@ class Piano {
 	btnGroup.appendChild(shiftDownBtn);
 	btnGroup.appendChild(zoomInBtn);
 	btnGroup.appendChild(zoomOutBtn);
-	div.appendChild(btnGroup);
 
 	div.appendChild(pianoKeys);
+	div.appendChild(btnGroup);
 
 	shiftUpBtn.addEventListener("click", e => {
 	    this.notesUp();
@@ -240,17 +213,45 @@ class Piano {
 	});
     }
 
+    noteOn(key) {
+	key.classList.add("piano-key-pressed");
+	let note = key.note + this.shift;
+	if (note > 127) return;
+	let event = new CustomEvent("NoteOnRequest", {
+	    detail: {
+		channel: 0,
+		note: note,
+		velocity: 127
+	    }
+	});
+	document.dispatchEvent(event);
+    }
+
+    noteOff(key) {
+	key.classList.remove("piano-key-pressed");
+	let note = key.note + this.shift;
+	if (note > 127) return;
+	let event = new CustomEvent("NoteOffRequest", {
+	    detail: {
+		channel: 0,
+		note: note,
+		velocity: 127
+	    }
+	});
+	document.dispatchEvent(event);
+    }
+
     zoomKeys(level) {
 	if (level > 3) {
 	    level = 3;
 	} else if (level < 1) {
 	    level = 1;
 	}
-	
+
 	if (level == 1) {
 	    this.pianoKeys.classList = "piano-keys piano-keys-zoom1";
 	} else if (level == 2) {
-	    this.pianoKeys.classList = "piano-keys";	    
+	    this.pianoKeys.classList = "piano-keys";
 	} else if (level == 3) {
 	    this.pianoKeys.classList = "piano-keys piano-keys-zoom3";
 	}
@@ -265,7 +266,7 @@ class Piano {
     zoomOutKeys() {
 	this.zoomKeys(this.zoomLevel - 1);
     }
-    
+
     notesDown() {
 	this.shift -= 12;
 	if (this.shift < 0)
@@ -313,14 +314,8 @@ class VolumeControls {
 	buttonGroup.appendChild(maxButton);
 	ctls.appendChild(buttonGroup);
 
-	// let piano = document.createElement("div");
-	// piano.classList = "piano";
-	// for (let note = 0; note < 127; note++) {	    
-	//     let btn = this.makePianoButton(note);
-	//     piano.appendChild(btn);
-	// }
-	ctls.appendChild(new Piano(24).element);
-	
+	ctls.appendChild(new Piano().element);
+
 	muteButton.addEventListener("click", e => {
 	    // Exclude virtual mixer slot
 	    for (let slot = -1; slot < 8; slot++) {
@@ -352,33 +347,6 @@ class VolumeControls {
 	document.addEventListener("SlotDescription", e => {
 	    this.onSlotDescription(e.detail.slot, e.detail.description)
 	});
-    }
-
-    makePianoButton(note) {
-	let btn = document.createElement("button");
-	btn.innerText = note;
-	btn.classList = "note" + note;
-	btn.addEventListener("touchstart", e => {
-	    {
-		let event = new CustomEvent("ProgramChangeRequest", {
-		    detail: {
-			channel: 0,
-			program: 1
-		    }
-		});
-		document.dispatchEvent(event);
-	    }
-	    let event = new CustomEvent("NoteOnRequest", {
-		detail: {
-		    channel: 0,
-		    note: note,
-		    velocity: 127
-		}
-	    });
-	    document.dispatchEvent(event);
-	});
-
-	return btn;
     }
 
     makeVolumeControl(slot) {
@@ -555,25 +523,25 @@ class MIDIProcessor {
 	return new Uint8Array([SYSEX_START, SYSEX_TYPE_EDU, 0, SYSEX_AUCAT,
 			       SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
     }
-    
+
     static setControllerMsg(channel, type, value) {
 	return new Uint8Array([channel, type, value]);
     }
 
     static programChangeMsg(channel, program) {
-        return new Uint8Array([0xC0 + channel, program]);
+	return new Uint8Array([0xC0 + channel, program]);
     }
 
     static pitchBendMsg(channel, program) {
-        return new Uint8Array([0xE0 + channel, program]);
+	return new Uint8Array([0xE0 + channel, program]);
     }
 
     static noteOnMsg(channel, note, velocity) {
-        return new Uint8Array([0x90 + channel, note, velocity]);
+	return new Uint8Array([0x90 + channel, note, velocity]);
     }
 
     static noteOffMsg(channel, note, delay) {
-        return new Uint8Array([0x80 + channel, note, 0]);
+	return new Uint8Array([0x80 + channel, note, 0]);
     }
 }
 
