@@ -76,6 +76,9 @@ const INSTRUMENTS = {
 		      '128 Gunshot']
 }
 
+const AUCATSVC_CONTROL = 1;
+const AUCATSVC_MIDI = 2;
+
 const SYSEX_MTC = 0x01;
 const SYSEX_MTC_FULL = 0x01;
 const SYSEX_CONTROL = 0x04;
@@ -159,8 +162,11 @@ class Piano {
 	    let key = document.createElement("div");
 	    key.classList = this.keyClass(i);
 	    key.classList.add("note-" + i);
-	    if (i > 127 || i < 0)
+	    pianoKeys.appendChild(key);
+	    if (i > 127 || i < 0) {
 		key.classList.add("piano-key-disabled");
+		continue;
+	    }
 	    key.note = i;
 	    let noteOn = e => { e.preventDefault(); this.noteOn(e.target); };
 	    let noteOff = e => { this.noteOff(e.target); };
@@ -184,7 +190,6 @@ class Piano {
 		pianoKeys.querySelectorAll(".piano-key-touch-move").forEach(
 		    x => this.noteOff(x));
 	    });
-	    pianoKeys.appendChild(key);
 	}
 
 	pianoKeys.addEventListener("touchmove", e => {
@@ -239,7 +244,7 @@ class Piano {
 	});
 
 	document.addEventListener("NoteOn", e => {
-	    let note = e.detail.note; // - this.shift;
+	    let note = e.detail.note;
 	    let key = pianoKeys.querySelector(".note-" + note);
 	    if (key) {
 		key.classList.add("piano-key-pressed");
@@ -247,7 +252,7 @@ class Piano {
 	    }
 	});
 	document.addEventListener("NoteOff", e => {
-	    let note = e.detail.note; // - this.shift;
+	    let note = e.detail.note;
 	    let key = pianoKeys.querySelector(".note-" + note);
 	    if (key) {
 		key.classList.remove("piano-key-pressed");
@@ -267,6 +272,14 @@ class Piano {
 	    }
 	});
 	document.dispatchEvent(event);
+	event = new CustomEvent("ProgramChangeRequest", {
+	    detail: {
+		channel: 0,
+		program: 50
+	    }
+	});
+	document.dispatchEvent(event);
+
     }
 
     noteOff(key) {
@@ -449,16 +462,12 @@ class VolumeControls {
 }
 
 class MIDIProcessor {
-    constructor(eventChannel) {
+    constructor() {
 	this.istatus = 0;
 	this.idata = [0, 0, 0];
 	this.icount = 0;
 	this.isysex = [];
 	this.decoder = new TextDecoder("ascii");
-
-	document.addEventListener(eventChannel, (e) => {
-	    this.process(e.detail)
-	});
     }
 
     eventLength(status) {
@@ -555,44 +564,42 @@ class MIDIProcessor {
 
     static volumeChangeMsg(slot, vol) {
 	if (slot == MASTER) {
-	    return new Uint8Array([SYSEX_START, SYSEX_TYPE_RT, 0,
-				   SYSEX_CONTROL, SYSEX_MASTER, 0, vol, SYSEX_STOP]);
+	    return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_RT,
+				   0, SYSEX_CONTROL, SYSEX_MASTER, 0, vol,
+				   SYSEX_STOP]);
 	} else {
-	    return new Uint8Array([MIDI_CTL | slot, MIDI_CTLVOL, vol]);
+	    return new Uint8Array([
+		AUCATSVC_CONTROL, MIDI_CTL | slot, MIDI_CTLVOL, vol]);
 	}
     }
 
     static dumprequest() {
-	return new Uint8Array([SYSEX_START, SYSEX_TYPE_EDU, 0, SYSEX_AUCAT,
-			       SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
+	return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_EDU, 0,
+			       SYSEX_AUCAT, SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
     }
 
     static setControllerMsg(channel, type, value) {
-	return new Uint8Array([channel, type, value]);
+	return new Uint8Array([AUCATSVC_MIDI, channel, type, value]);
     }
 
     static programChangeMsg(channel, program) {
-	return new Uint8Array([0xC0 + channel, program]);
+	return new Uint8Array([AUCATSVC_MIDI, 0xc0 + channel, program]);
     }
 
     static pitchBendMsg(channel, program) {
-	return new Uint8Array([0xE0 + channel, program]);
+	return new Uint8Array([AUCATSVC_MIDI, 0xe0 + channel, program]);
     }
 
     static noteOnMsg(channel, note, velocity) {
-	return new Uint8Array([0x90 + channel, note, velocity]);
+	return new Uint8Array([AUCATSVC_MIDI, 0x90 + channel, note, velocity]);
     }
 
     static noteOffMsg(channel, note, delay) {
-	return new Uint8Array([0x80 + channel, note, 0]);
+	return new Uint8Array([AUCATSVC_MIDI, 0x80 + channel, note, 0]);
     }
 }
 
 class MIDIControlProcessor extends MIDIProcessor {
-    constructor(conn) {
-	super("MIDIControlMessage");
-    }
-
     onMIDIEvent(data) {
 	let volume = 0;
 	let slot = 0;
@@ -649,10 +656,6 @@ class MIDIControlProcessor extends MIDIProcessor {
 }
 
 class MIDIEventProcessor extends MIDIProcessor {
-    constructor() {
-	super("MIDIMessage");
-    }
-
     onMIDIEvent(data) {
 	if (data.cmd == EV_CTL) {
 	    // slot = data.ch;
@@ -674,17 +677,16 @@ class MIDIEventProcessor extends MIDIProcessor {
 	    });
 	    document.dispatchEvent(event);
 	} else {
-	    console.log("Unhandled message type:", data);
+	    //console.log("Unhandled message type:", data);
 	    return;
 	}
     }
 }
 
 class Connection {
-    constructor(eventChannel, url) {
+    constructor(url) {
 	this.socket = null;
 	this.url = url;
-	this.eventChannel = eventChannel;
     }
 
     open() {
@@ -700,10 +702,17 @@ class Connection {
 	    };
 	    this.socket.onmessage = evt => {
 		let data = new Uint8Array(evt.data);
-		let event = new CustomEvent(this.eventChannel, {
-		    detail: data
-		});
-		document.dispatchEvent(event);
+		if (data[0] == AUCATSVC_CONTROL) {
+		    let event = new CustomEvent("MIDIControlMessage", {
+			detail: data.slice(1)
+		    });
+		    document.dispatchEvent(event);
+		} else if (data[0] == AUCATSVC_MIDI) {
+		    let event = new CustomEvent("MIDIMessage", {
+			detail: data.slice(1)
+		    });
+		    document.dispatchEvent(event);
+		}
 	    };
 	    this.socket.onclose = () => {
 		this.socket = null;
@@ -733,18 +742,23 @@ class Connection {
 };
 
 document.addEventListener("DOMContentLoaded", function() {
-    let ctlconn = new Connection("MIDIControlMessage", "wss://thor:8888/aucat");
-    let conn = new Connection("MIDIMessage", "wss://thor:8888/midi");
-    let midi = new MIDIControlProcessor();
-    new MIDIEventProcessor();
+    let conn = new Connection("wss://thor:8888/aucat");
+    let ctlmidi = new MIDIControlProcessor();
+    let midi = new MIDIEventProcessor();
     let ctls = new VolumeControls();
     let app = document.getElementById("app");
     app.appendChild(ctls.element);
 
+    document.addEventListener("MIDIMessage", (e) => {
+	midi.process(e.detail);
+    });
+    document.addEventListener("MIDIControlMessage", (e) => {
+	ctlmidi.process(e.detail);
+    });
     document.addEventListener("VolumeChangeRequest", e => {
 	let msg = MIDIProcessor.volumeChangeMsg(
 	    e.detail.slot, e.detail.volume);
-	if (!ctlconn.send(msg)) {
+	if (!conn.send(msg)) {
 	    logError("unable to change volume");
 	}
     });
@@ -769,6 +783,5 @@ document.addEventListener("DOMContentLoaded", function() {
 	    logError("unable to change program");
 	}
     });
-    ctlconn.open();
     conn.open();
 });

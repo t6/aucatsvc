@@ -15,11 +15,10 @@
  */
 
 #include <fcntl.h>
+#include <poll.h>
 #include <kore/kore.h>
 #include <kore/http.h>
 #include <kore/tasks.h>
-#include <sys/ioctl.h>
-#include <sys/soundcard.h>
 
 #ifdef KORE_MODULE_ENTER_SANDBOX
 #include <sys/capsicum.h>
@@ -29,38 +28,31 @@
 
 #include "assets.h"
 
+#define AUCATSVC_CONTROL 1
+#define AUCATSVC_MIDI 2
+
 int init(int);
 int serve_index(struct http_request *);
 int serve_app_js(struct http_request *);
 int serve_app_css(struct http_request *);
 int serve_aucat(struct http_request *);
-int serve_midi(struct http_request *);
 
 void websocket_connect(struct connection *);
 void websocket_disconnect(struct connection *);
-void websocket_aucat_message(struct connection *, u_int8_t, void *, size_t);
-void websocket_midi_message(struct connection *, u_int8_t, void *, size_t);
+void websocket_message(struct connection *, u_int8_t, void *, size_t);
 
-int reader_task(struct kore_task *, struct mio_hdl *);
 int aucat_reader(struct kore_task *);
-int midi_reader(struct kore_task *);
 void data_available(struct kore_task *);
 
 /* Websocket callbacks. */
 struct kore_wscbs aucat_wscbs = {
 	websocket_connect,
-	websocket_aucat_message,
-	websocket_disconnect
-};
-
-struct kore_wscbs midi_wscbs = {
-	websocket_connect,
-	websocket_midi_message,
+	websocket_message,
 	websocket_disconnect
 };
 
 static struct mio_hdl *aucat_hdl = NULL, *midi_hdl = NULL;
-struct kore_task aucat_reader_task, midi_reader_task;
+struct kore_task aucat_reader_task;
 
 int
 init(int state)
@@ -76,33 +68,25 @@ init(int state)
 
 			kore_task_create(&aucat_reader_task, aucat_reader);
 			kore_task_bind_callback(&aucat_reader_task, data_available);
-		} else if (worker->id == 2) {
 			midi_hdl = mio_open(MIDIDEVICE, MIO_OUT | MIO_IN, 0);
 			if (midi_hdl == NULL) {
 				kore_log(LOG_WARNING, "unable to open %s", MIDIDEVICE);
 				return (KORE_RESULT_ERROR);
 			}
-			kore_task_create(&midi_reader_task, midi_reader);
-			kore_task_bind_callback(&midi_reader_task, data_available);
 		}
-
 #ifdef KORE_MODULE_ENTER_SANDBOX
 		break;
 	case KORE_MODULE_ENTER_SANDBOX:
 #endif
 		if (worker->id == 1) {
 			kore_task_run(&aucat_reader_task);
-		} else if (worker->id == 2) {
-			kore_task_run(&midi_reader_task);
 		}
 		break;
 	case KORE_MODULE_UNLOAD:
 		if (worker->id == 1) {
 			mio_close(aucat_hdl);
-			kore_task_destroy(&aucat_reader_task);
-		} else if (worker->id == 2) {
 			mio_close(midi_hdl);
-			kore_task_destroy(&midi_reader_task);
+			kore_task_destroy(&aucat_reader_task);
 		}
 		break;
 	}
@@ -141,17 +125,22 @@ websocket_connect(struct connection *c)
 }
 
 void
-websocket_aucat_message(struct connection *c, u_int8_t op, void *data, size_t len)
+websocket_message(struct connection *c, u_int8_t op, void *buf, size_t len)
 {
-	if (worker->id == 1)
-		mio_write(aucat_hdl, data, len);
-}
+	unsigned char *data = buf;
 
-void
-websocket_midi_message(struct connection *c, u_int8_t op, void *data, size_t len)
-{
-	if (worker->id == 2)
-		mio_write(midi_hdl, data, len);
+	if (len > 0) {
+		switch (data[0]) {
+		case AUCATSVC_CONTROL:
+			mio_write(aucat_hdl, data + 1, len - 1);
+			break;
+		case AUCATSVC_MIDI:
+			mio_write(midi_hdl, data + 1, len - 1);
+			break;
+		default:
+			kore_log(LOG_NOTICE, "Ignored message type: %d", data[0]);
+		}
+	}
 }
 
 void
@@ -168,40 +157,59 @@ serve_aucat(struct http_request *req)
 }
 
 int
-serve_midi(struct http_request *req)
-{
-	kore_websocket_handshake(req, &midi_wscbs);
-	return (KORE_RESULT_OK);
-}
-
-int
-reader_task(struct kore_task *t, struct mio_hdl *hdl)
+aucat_reader(struct kore_task *t)
 {
 	u_int8_t buf[BUFSIZ];
 	ssize_t ret;
+	struct pollfd *pfds;
+	int aucat_nfds, midi_nfds, nfds, ev;
+
+	aucat_nfds = mio_nfds(aucat_hdl);
+	midi_nfds = mio_nfds(midi_hdl);
+	nfds = aucat_nfds + midi_nfds;
+
+	pfds = kore_calloc(nfds, sizeof(struct pollfd));
+	if (pfds == NULL)
+		return (KORE_RESULT_ERROR);
 
 	for (;;) {
-		ret = mio_read(hdl, buf, sizeof(buf));
-		if (ret <= 0) {
-			/* that's it */
-			return (KORE_RESULT_ERROR);
+		if (mio_pollfd(aucat_hdl, pfds, POLLIN) < 0)
+			goto error;
+		if (mio_pollfd(midi_hdl, pfds + aucat_nfds, POLLIN) < 0)
+			goto error;
+
+		if (poll(pfds, nfds, -1) < 0) {
+			kore_log(LOG_NOTICE, "poll: %s", errno_s);
+			goto error;
 		}
-		kore_task_channel_write(t, buf, ret);
+
+		ev = mio_revents(aucat_hdl, pfds);
+		if (ev & POLLIN) {
+			buf[0] = AUCATSVC_CONTROL;
+			ret = mio_read(aucat_hdl, buf + 1, sizeof(buf) - 1);
+			if (ret > 0) {
+				kore_task_channel_write(t, buf, ret + 1);
+
+			}
+		} else if (ev & POLLHUP)
+			goto error;
+
+		ev = mio_revents(midi_hdl, pfds + aucat_nfds);
+		if (ev & POLLIN) {
+			buf[0] = AUCATSVC_MIDI;
+			ret = mio_read(midi_hdl, buf + 1, sizeof(buf) - 1);
+			if (ret > 0) {
+				kore_task_channel_write(t, buf, ret + 1);
+			}
+		} else if (ev & POLLHUP) {
+			goto error;
+		}
 	}
 
 	return (KORE_RESULT_OK);
-}
-
-int
-aucat_reader(struct kore_task *t)
-{
-	return reader_task(t, aucat_hdl);
-}
-
-int
-midi_reader(struct kore_task *t)
-{
-	return reader_task(t, midi_hdl);
+error:
+	free(pfds);
+	return (KORE_RESULT_ERROR);
 }
 
 void
@@ -220,5 +228,5 @@ data_available(struct kore_task *t)
 		kore_log(LOG_WARNING, "truncated data from task");
 
 	kore_websocket_broadcast(NULL, WEBSOCKET_OP_BINARY, buf, len,
-				 WEBSOCKET_BROADCAST_LOCAL);
+				 WEBSOCKET_BROADCAST_GLOBAL);
 }
