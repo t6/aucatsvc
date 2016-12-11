@@ -1,9 +1,9 @@
-$track-background-color: #181A26 !default;
-$track-color: #550055 !default;
-$thumb-color: #4444aa !default;
+$track-background-color: #181A26;
+$track-color: #550055;
+$thumb-color: #4444aa;
 
-$thumb-radius: 360px !default;
-$thumb-border-color: #070 !default;
+$thumb-radius: 360px;
+$thumb-border-color: #070;
 
 $button-border-color: $thumb-border-color;
 $track-radius: 0px;
@@ -47,8 +47,6 @@ body {
 }
 
 .volume-controls button {
-    //@include shadow($thumb-shadow-size, $thumb-shadow-blur, $thumb-shadow-color);
-    @include shadow($track-shadow-size, $track-shadow-blur, $track-shadow-color);
     flex: auto;
     color: $button-text-color;
     font-family: inherit;
@@ -59,7 +57,6 @@ body {
     background-color: $track-color;
     border: 1px solid $button-border-color;
     text-decoration: none;
-    // border-radius: 2px;
 }
 
 .volume-controls button:active {

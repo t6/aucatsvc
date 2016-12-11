@@ -4,6 +4,9 @@
  * https://raw.githubusercontent.com/mrcoles/javascript-piano/master/piano.css
  */
 
+$piano-key-highlight-color: red !default;
+$piano-key-disabled-color: gray !default;
+
 .piano {
     overflow: hidden;
 }
@@ -64,14 +67,10 @@
     box-shadow: inset 3px 2px 3px #999, inset -3px 2px 3px #999;
 }
 
-.piano-key.piano-key-black.piano-key-highlight:after {
-    background-color: red;
+.piano-key.piano-key-highlight, .piano-key.piano-key-black.piano-key-highlight:after {
+    box-shadow: inset 3px 2px 3px $piano-key-highlight-color, inset -3px 2px 3px $piano-key-highlight-color;
 }
 
 .piano-key.piano-key-disabled {
-    background-color: gray;
-}
-
-.piano-key.piano-key-highlight {
-    background-color: red;
+    background-color: $piano-key-disabled-color;
 }

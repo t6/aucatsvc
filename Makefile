@@ -15,7 +15,7 @@ assets/app.css: src/app.scss src/_inputrange.scss src/_piano.scss
 
 watch:
 	@${INOTIFYWAIT} -q -m -e close_write src assets | \
-		while read -r filename event; do ${MAKE} all; done
+		while read -r filename event; do ${MAKE} all || true; done
 
 clean:
 	rm -f assets/app.css
