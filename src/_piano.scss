@@ -61,6 +61,11 @@
 
 .piano-key.piano-key-black.piano-key-pressed:after, .piano-key.piano-key-black:active:after {
     background-color: #222;
+    box-shadow: inset 3px 2px 3px #999, inset -3px 2px 3px #999;
+}
+
+.piano-key.piano-key-black.piano-key-highlight:after {
+    background-color: red;
 }
 
 .piano-key.piano-key-disabled {
