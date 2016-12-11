@@ -22,59 +22,168 @@
 // onMIDIEvent 3 times.
 let testmsg = new Uint8Array([182, 7, 127, 240, 125, 0, 35, 2, 247, 240, 125, 127, 35, 1, 1, 0, 112, 117, 108, 115, 101, 97, 117, 49, 0, 0, 247]);
 
-const INSTRUMENTS = {
-    'Piano': ['1 Acoustic Grand Piano', '2 Bright Acoustic Piano',
-	      '3 Electric Grand Piano', '4 Honky-tonk Piano',
-	      '5 Electric Piano 1', '6 Electric Piano 2',
-	      '7 Harpsichord', '8 Clavinet'],
-    'Chromatic Percussion': ['9 Celesta', '10 Glockenspiel', '11 Music Box',
-			     '12 Vibraphone', '13 Marimba', '14 Xylophone',
-			     '15 Tubular Bells', '16 Dulcimer'],
-    'Organ': ['17 Drawbar Organ', '18 Percussive Organ', '19 Rock Organ',
-	      '20 Church Organ', '21 Reed Organ', '22 Accordion',
-	      '23 Harmonica', '24 Tango Accordion'],
-    'Guitar': ['25 Acoustic Guitar (nylon)', '26 Acoustic Guitar (steel)',
-	       '27 Electric Guitar (jazz)', '28 Electric Guitar (clean)',
-	       '29 Electric Guitar (muted)', '30 Overdriven Guitar',
-	       '31 Distortion Guitar', '32 Guitar Harmonics'],
-    'Bass': ['33 Acoustic Bass', '34 Electric Bass (finger)',
-	     '35 Electric Bass (pick)', '36 Fretless Bass', '37 Slap Bass 1',
-	     '38 Slap Bass 2', '39 Synth Bass 1', '40 Synth Bass 2'],
-    'Strings': ['41 Violin', '42 Viola', '43 Cello', '44 Contrabass',
-		'45 Tremolo Strings', '46 Pizzicato Strings',
-		'47 Orchestral Harp', '48 Timpani'],
-    'Ensemble': ['49 String Ensemble 1', '50 String Ensemble 2',
-		 '51 Synth Strings 1', '52 Synth Strings 2', '53 Choir Aahs',
-		 '54 Voice Oohs', '55 Synth Choir', '56 Orchestra Hit'],
-    'Brass': ['57 Trumpet', '58 Trombone', '59 Tuba', '60 Muted Trumpet',
-	      '61 French Horn', '62 Brass Section', '63 Synth Brass 1',
-	      '64 Synth Brass 2'],
-    'Reed': ['65 Soprano Sax', '66 Alto Sax', '67 Tenor Sax', '68 Baritone Sax',
-	     '69 Oboe', '70 English Horn', '71 Bassoon', '72 Clarinet'],
-    'Pipe': ['73 Piccolo', '74 Flute', '75 Recorder', '76 Pan Flute',
-	     '77 Blown Bottle', '78 Shakuhachi', '79 Whistle', '80 Ocarina'],
-    'Synth Lead': ['81 Lead 1 (square)', '82 Lead 2 (sawtooth)',
-		   '83 Lead 3 (calliope)', '84 Lead 4 (chiff)',
-		   '85 Lead 5 (charang)', '86 Lead 6 (voice)',
-		   '87 Lead 7 (fifths)', '88 Lead 8 (bass + lead)'],
-    'Synth Pad': ['89 Pad 1 (new age)', '90 Pad 2 (warm)',
-		  '91 Pad 3 (polysynth)', '92 Pad 4 (choir)',
-		  '93 Pad 5 (bowed)', '94 Pad 6 (metallic)',
-		  '95 Pad 7 (halo)', '96 Pad 8 (sweep)'],
-    'Synth Effects': ['97 FX 1 (rain)', '98 FX 2 (soundtrack)',
-		      '99 FX 3 (crystal)', '100 FX 4 (atmosphere)',
-		      '101 FX 5 (brightness)', '102 FX 6 (goblins)',
-		      '103 FX 7 (echoes)', '104 FX 8 (sci-fi)'],
-    'Ethnic': ['105 Sitar', '106 Banjo', '107 Shamisen', '108 Koto',
-	       '109 Kalimba', '110 Bagpipe', '111 Fiddle', '112 Shanai'],
-    'Percussive': ['113 Tinkle Bell', '114 Agogo', '115 Steel Drums',
-		   '116 Woodblock', '117 Taiko Drum',
-		   '118 Melodic Tom', '119 Synth Drum'],
-    'Sound effects': ['120 Reverse Cymbal', '121 Guitar Fret Noise',
-		      '122 Breath Noise', '123 Seashore', '124 Bird Tweet',
-		      '125 Telephone Ring', '126 Helicopter', '127 Applause',
-		      '128 Gunshot']
-}
+const INSTRUMENTS = [
+    ['Piano', [
+	[0, 'Acoustic Grand Piano'],
+	[1, 'Bright Acoustic Piano'],
+	[2, 'Electric Grand Piano'],
+	[3, 'Honky-tonk Piano'],
+	[4, 'Electric Piano 1'],
+	[5, 'Electric Piano 2'],
+	[6, 'Harpsichord'],
+	[7, 'Clavinet']
+    ]],
+    ['Chromatic Percussion', [
+	[8, 'Celesta'],
+	[9, 'Glockenspiel'],
+	[10, 'Music Box'],
+	[11, 'Vibraphone'],
+	[12, 'Marimba'],
+	[13, 'Xylophone'],
+	[14, 'Tubular Bells'],
+	[15, 'Dulcimer']
+    ]],
+    ['Organ', [
+	[16, 'Drawbar Organ'],
+	[17, 'Percussive Organ'],
+	[18, 'Rock Organ'],
+	[19, 'Church Organ'],
+	[20, 'Reed Organ'],
+	[21, 'Accordion'],
+	[22, 'Harmonica'],
+	[23, 'Tango Accordion']
+    ]],
+    ['Guitar', [
+	[24, 'Acoustic Guitar (nylon)'],
+	[25, 'Acoustic Guitar (steel)'],
+	[26, 'Electric Guitar (jazz)'],
+	[27, 'Electric Guitar (clean)'],
+	[28, 'Electric Guitar (muted)'],
+	[29, 'Overdriven Guitar'],
+	[30, 'Distortion Guitar'],
+	[31, 'Guitar Harmonics']
+    ]],
+    ['Bass', [
+	[32, 'Acoustic Bass'],
+	[33, 'Electric Bass (finger)'],
+	[34, 'Electric Bass (pick)'],
+	[35, 'Fretless Bass'],
+	[36, 'Slap Bass 1'],
+	[37, 'Slap Bass 2'],
+	[38, 'Synth Bass 1'],
+	[39, 'Synth Bass 2']
+    ]],
+    ['Strings', [
+	[40, 'Violin'],
+	[41, 'Viola'],
+	[42, 'Cello'],
+	[43, 'Contrabass'],
+	[44, 'Tremolo Strings'],
+	[45, 'Pizzicato Strings'],
+	[46, 'Orchestral Harp'],
+	[47, 'Timpani']
+    ]],
+    ['Ensemble', [
+	[48, 'String Ensemble 1'],
+	[49, 'String Ensemble 2'],
+	[50, 'Synth Strings 1'],
+	[51, 'Synth Strings 2'],
+	[52, 'Choir Aahs'],
+	[53, 'Voice Oohs'],
+	[54, 'Synth Choir'],
+	[55, 'Orchestra Hit']
+    ]],
+    ['Brass', [
+	[56, 'Trumpet'],
+	[57, 'Trombone'],
+	[58, 'Tuba'],
+	[59, 'Muted Trumpet'],
+	[60, 'French Horn'],
+	[61, 'Brass Section'],
+	[62, 'Synth Brass 1'],
+	[63, 'Synth Brass 2'],
+    ]],
+    ['Reed', [
+	[64, 'Soprano Sax'],
+	[65, 'Alto Sax'],
+	[66, 'Tenor Sax'],
+	[67, 'Baritone Sax'],
+	[68, 'Oboe'],
+	[69, 'English Horn'],
+	[70, 'Bassoon'],
+	[71, 'Clarinet']
+    ]],
+    ['Pipe', [
+	[72, 'Piccolo'],
+	[73, 'Flute'],
+	[74, 'Recorder'],
+	[75, 'Pan Flute'],
+	[76, 'Blown Bottle'],
+	[77, 'Shakuhachi'],
+	[78, 'Whistle'],
+	[79, 'Ocarina']
+    ]],
+    ['Synth Lead', [
+	[80, 'Lead 1 (square)'],
+	[81, 'Lead 2 (sawtooth)'],
+	[82, 'Lead 3 (calliope)'],
+	[83, 'Lead 4 (chiff)'],
+	[84, 'Lead 5 (charang)'],
+	[85, 'Lead 6 (voice)'],
+	[86, 'Lead 7 (fifths)'],
+	[87, 'Lead 8 (bass + lead)']
+    ]],
+    ['Synth Pad', [
+	[88, 'Pad 1 (new age)'],
+	[89, 'Pad 2 (warm)'],
+	[90, 'Pad 3 (polysynth)'],
+	[91, 'Pad 4 (choir)'],
+	[92, 'Pad 5 (bowed)'],
+	[93, 'Pad 6 (metallic)'],
+	[94, 'Pad 7 (halo)'],
+	[95, 'Pad 8 (sweep)']
+    ]],
+    ['Synth Effects', [
+	[96, 'FX 1 (rain)'],
+	[97, 'FX 2 (soundtrack)'],
+	[98, 'FX 3 (crystal)'],
+	[99, 'FX 4 (atmosphere)'],
+	[100, 'FX 5 (brightness)'],
+	[101, 'FX 6 (goblins)'],
+	[102, 'FX 7 (echoes)'],
+	[103, 'FX 8 (sci-fi)']
+    ]],
+    ['Ethnic', [
+	[104, 'Sitar'],
+	[105, 'Banjo'],
+	[106, 'Shamisen'],
+	[107, 'Koto'],
+	[108, 'Kalimba'],
+	[109, 'Bagpipe'],
+	[110, 'Fiddle'],
+	[111, 'Shanai']
+    ]],
+    ['Percussive', [
+	[112, 'Tinkle Bell'],
+	[113, 'Agogo'],
+	[114, 'Steel Drums'],
+	[115, 'Woodblock'],
+	[116, 'Taiko Drum'],
+	[117, 'Melodic Tom'],
+	[118, 'Synth Drum']
+    ]],
+    ['Sound effects', [
+	[119, 'Reverse Cymbal'],
+	[120, 'Guitar Fret Noise'],
+	[121, 'Breath Noise'],
+	[122, 'Seashore'],
+	[123, 'Bird Tweet'],
+	[124, 'Telephone Ring'],
+	[125, 'Helicopter'],
+	[126, 'Applause'],
+	[127, 'Gunshot']
+    ]]
+]
 
 const AUCATSVC_CONTROL = 1;
 const AUCATSVC_MIDI = 2;
@@ -144,6 +253,71 @@ function logError(msg) {
     }
 }
 
+class InstrumentSelector {
+    constructor() {
+	let div = document.createElement("div");
+	div.classList = "instrument-selector";
+	this.div = div;
+	this.channel = 0;
+
+	let channels = document.createElement("select");
+	for (let i = 0; i < 16; i++) {
+	    let option = document.createElement("option");
+	    option.value = i;
+	    option.innerText = "chan " + i;
+	    channels.appendChild(option);
+	}
+	
+	let select = document.createElement("select");
+	let option = document.createElement("option");
+	option.value = -1;
+	option.innerText = "--";
+	select.appendChild(option);
+	INSTRUMENTS.forEach(x => {
+	    let [category, instruments] = x;
+	    instruments.forEach(y => {
+		let [prog, name] = y;
+		let option = document.createElement("option");
+		option.value = prog;
+		option.innerText = "" + prog + " " + category + " - " + name;
+		select.appendChild(option);
+	    });
+	});
+
+	select.addEventListener("change", e => {
+	    let prog = e.target.value;
+	    if (prog < 0) return;
+	    let event = new CustomEvent("ProgramChangeRequest", {
+		detail: {
+		    channel: this.channel,
+		    program: prog
+		}
+	    });
+	    document.dispatchEvent(event);
+	});
+
+	channels.addEventListener("change", e => {
+	    let chan = parseInt(e.target.value, 10);
+	    let event = new CustomEvent("ChannelChange", {
+		detail: {
+		    channel: chan
+		}
+	    });
+	    document.dispatchEvent(event);
+	    this.channel = chan;
+	});
+
+	div.appendChild(channels);
+	div.appendChild(select);
+	document.addEventListener("ProgramChange", e => {
+	});
+    }
+
+    get element() {
+	return this.div;
+    }
+}
+
 class Piano {
     constructor() {
 	let div = document.createElement("div");
@@ -155,6 +329,7 @@ class Piano {
 	this.pianoKeys = pianoKeys;
 	this.zoomLevel = 7;
 	this.shift = 0;
+	this.channel = 0;
 
 	// Create more keys than we have.  These look better than
 	// empty space when the keyboard was shifted too much.
@@ -259,6 +434,10 @@ class Piano {
 		key.classList.remove("piano-key-highlight");
 	    }
 	});
+
+	document.addEventListener("ChannelChange", e => {
+	    this.channel = e.detail.channel;
+	});
     }
 
     noteOn(key) {
@@ -266,20 +445,12 @@ class Piano {
 	if (key.note > 127) return;
 	let event = new CustomEvent("NoteOnRequest", {
 	    detail: {
-		channel: 0,
+		channel: this.channel,
 		note: key.note,
 		velocity: 127
 	    }
 	});
 	document.dispatchEvent(event);
-	event = new CustomEvent("ProgramChangeRequest", {
-	    detail: {
-		channel: 0,
-		program: 50
-	    }
-	});
-	document.dispatchEvent(event);
-
     }
 
     noteOff(key) {
@@ -288,7 +459,7 @@ class Piano {
 	if (key.note > 127) return;
 	let event = new CustomEvent("NoteOffRequest", {
 	    detail: {
-		channel: 0,
+		channel: this.channel,
 		note: key.note,
 		velocity: 127
 	    }
@@ -374,6 +545,7 @@ class VolumeControls {
 	ctls.appendChild(buttonGroup);
 
 	ctls.appendChild(new Piano().element);
+	ctls.appendChild(new InstrumentSelector().element);
 
 	muteButton.addEventListener("click", e => {
 	    for (let slot = -1; slot < 8; slot++) {
@@ -657,10 +829,11 @@ class MIDIControlProcessor extends MIDIProcessor {
 
 class MIDIEventProcessor extends MIDIProcessor {
     onMIDIEvent(data) {
-	if (data.cmd == EV_CTL) {
-	    // slot = data.ch;
-	    // volume = data.v1;
-	} else if (data.cmd == EV_NON) {
+	// if (data.cmd == EV_CTL) {
+	// slot = data.ch;
+	// volume = data.v1;
+	//}
+	if (data.cmd == EV_NON) {
 	    let event = new CustomEvent("NoteOn", {
 		detail: {
 		    note: data.note,
@@ -677,7 +850,7 @@ class MIDIEventProcessor extends MIDIProcessor {
 	    });
 	    document.dispatchEvent(event);
 	} else {
-	    //console.log("Unhandled message type:", data);
+	    console.log("Unhandled message type:", data);
 	    return;
 	}
     }
