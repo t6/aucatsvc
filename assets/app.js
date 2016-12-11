@@ -267,7 +267,7 @@ class InstrumentSelector {
 	    option.innerText = "chan " + i;
 	    channels.appendChild(option);
 	}
-	
+
 	let select = document.createElement("select");
 	let option = document.createElement("option");
 	option.value = -1;
@@ -397,10 +397,12 @@ class Piano {
 	zoomInBtn.innerText = "Z+";
 	let zoomOutBtn = document.createElement("button");
 	zoomOutBtn.innerText = "Z-";
+
 	btnGroup.appendChild(shiftUpBtn);
 	btnGroup.appendChild(shiftDownBtn);
 	btnGroup.appendChild(zoomInBtn);
 	btnGroup.appendChild(zoomOutBtn);
+	btnGroup.appendChild(new InstrumentSelector().element);
 
 	div.appendChild(pianoKeys);
 	div.appendChild(btnGroup);
@@ -545,7 +547,6 @@ class VolumeControls {
 	ctls.appendChild(buttonGroup);
 
 	ctls.appendChild(new Piano().element);
-	ctls.appendChild(new InstrumentSelector().element);
 
 	muteButton.addEventListener("click", e => {
 	    for (let slot = -1; slot < 8; slot++) {
@@ -767,7 +768,7 @@ class MIDIProcessor {
     }
 
     static noteOffMsg(channel, note, delay) {
-	return new Uint8Array([AUCATSVC_MIDI, 0x80 + channel, note, 0]);
+	return new Uint8Array([AUCATSVC_MIDI, 0x80 + channel, note, delay]);
     }
 }
 
@@ -915,7 +916,8 @@ class Connection {
 };
 
 document.addEventListener("DOMContentLoaded", function() {
-    let conn = new Connection("wss://thor:8888/aucat");
+    let url = "wss://" + location.host + "/aucat";
+    let conn = new Connection(url);
     let ctlmidi = new MIDIControlProcessor();
     let midi = new MIDIEventProcessor();
     let ctls = new VolumeControls();
@@ -944,7 +946,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     document.addEventListener("NoteOffRequest", e => {
 	let msg = MIDIProcessor.noteOffMsg(
-	    e.detail.channel, e.detail.note, e.detail.velocity);
+	    e.detail.channel, e.detail.note, e.detail.delay);
 	if (!conn.send(msg)) {
 	    logError("unable to turn off note");
 	}

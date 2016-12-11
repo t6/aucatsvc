@@ -2,12 +2,12 @@ SASSC?=	sassc
 KORE?=	kore
 INOTIFYWAIT?=	inotifywait
 
-all: assets/app.css aucatsvc.so
+all: aucatsvc.so
 
 run: all
 	${KORE} run
 
-aucatsvc.so: src/aucatsvc.c
+aucatsvc.so: src/aucatsvc.c assets/app.css assets/app.js assets/index.html
 	${KORE} build
 
 assets/app.css: src/app.scss src/_inputrange.scss src/_piano.scss

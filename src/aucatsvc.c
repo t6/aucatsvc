@@ -14,6 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <kore/kore.h>
@@ -32,6 +34,7 @@
 #define AUCATSVC_MIDI 2
 
 int init(int);
+void http_file_response(struct http_request *, const char *);
 int serve_index(struct http_request *);
 int serve_app_js(struct http_request *);
 int serve_app_css(struct http_request *);
@@ -94,11 +97,54 @@ init(int state)
 	return (KORE_RESULT_OK);
 }
 
+void
+http_file_response(struct http_request *req, const char *filename)
+{
+#if defined(DEVELOPMENT)
+	char *addr;
+	int fd;
+	struct stat sb;
+
+	fd = open(filename, O_RDONLY);
+	if (fd == -1) {
+		kore_log(LOG_CRIT, "open: %s", errno_s);
+		abort();
+	}
+
+	if (fstat(fd, &sb) == -1) {
+		kore_log(LOG_CRIT, "fstat: %s", errno_s);
+		abort();
+	}
+
+	addr = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (addr == MAP_FAILED) {
+		kore_log(LOG_CRIT, "mmap: %s", errno_s);
+		abort();
+	}
+
+	http_response(req, 200, addr, sb.st_size);
+
+	munmap(addr, sb.st_size);
+	close(fd);
+#else
+	if (strcmp(filename, "assets/app.css") == 0) {
+		http_response(req, 200, asset_app_css, asset_len_app_css);
+	} else if (strcmp(filename, "assets/app.js") == 0) {
+		http_response(req, 200, asset_app_js, asset_len_app_js);
+	} else if (strcmp(filename, "assets/index.html") == 0) {
+		http_response(req, 200, asset_index_html, asset_len_index_html);
+	} else {
+		kore_log(LOG_WARNING, "unknown asset: %s", filename);
+		http_response(req, 500, NULL, 0);
+	}
+#endif
+}
+
 int
 serve_index(struct http_request *req)
 {
 	http_response_header(req, "content-type", "text/html");
-	http_response(req, 200, asset_index_html, asset_len_index_html);
+	http_file_response(req, "assets/index.html");
 	return (KORE_RESULT_OK);
 }
 
@@ -106,7 +152,7 @@ int
 serve_app_js(struct http_request *req)
 {
 	http_response_header(req, "content-type", "application/javascript");
-	http_response(req, 200, asset_app_js, asset_len_app_js);
+	http_file_response(req, "assets/app.js");
 	return (KORE_RESULT_OK);
 }
 
@@ -114,7 +160,7 @@ int
 serve_app_css(struct http_request *req)
 {
 	http_response_header(req, "content-type", "text/css");
-	http_response(req, 200, asset_app_css, asset_len_app_css);
+	http_file_response(req, "assets/app.css");
 	return (KORE_RESULT_OK);
 }
 
@@ -208,7 +254,7 @@ aucat_reader(struct kore_task *t)
 
 	return (KORE_RESULT_OK);
 error:
-	free(pfds);
+	kore_free(pfds);
 	return (KORE_RESULT_ERROR);
 }
 
