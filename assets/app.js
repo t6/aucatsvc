@@ -334,7 +334,7 @@ class Piano {
 	pianoKeys.classList = "piano-keys";
 	this.pianoKeys = pianoKeys;
 	this.zoomLevel = 7;
-	this.shift = 0;
+	this.shift = 4 * 7;
 	this.channel = 0;
 
 	// Create more keys than we have.  These look better than
@@ -451,6 +451,8 @@ class Piano {
 	document.addEventListener("ChannelChange", e => {
 	    this.channel = e.detail.channel;
 	});
+
+	this.zoomAndShiftKeys(this.zoomLevel, this.shift);
     }
 
     noteOn(key) {
@@ -507,11 +509,6 @@ class Piano {
 
     zoomOutKeys() {
 	this.zoomAndShiftKeys(this.zoomLevel - 1, this.shift);
-    }
-
-    shiftNotes(dir) {
-	let d = 52 * this.shift;
-	this.pianoKeys.style.transform = "scale(" + this.zoomLevel + ", 1) translate(-" + d + "px)";
     }
 
     notesDown() {
