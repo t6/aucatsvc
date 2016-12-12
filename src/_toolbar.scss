@@ -1,0 +1,39 @@
+$toolbar-icon-size: 36px !default;
+$toolbar-width: 200px !default;
+$toolbar-icon-margin: 10px !default;
+$toolbar-animation-duration: 300ms !default;
+
+div.toolbar div {
+    display: inline-block;
+}
+
+.toolbar-icon {
+    display: inline-block;
+    width: $toolbar-icon-size;
+    height: $toolbar-icon-size;
+    background: $track-color;
+    cursor: pointer;
+    border-radius: 5px;
+
+    transition: all $toolbar-animation-duration;
+
+    &:before {
+	content: 'M';
+	display: inline-block;
+	width: $toolbar-icon-size;
+	height: $toolbar-icon-size;
+	color: $text-color;
+	text-align: center;
+	line-height: $toolbar-icon-size;
+    }
+
+    &:hover {
+	background: $thumb-color;
+    }
+
+    margin-left: $toolbar-icon-size / 8;
+}
+
+.toolbar-icon-active {
+    background: $thumb-color;
+}

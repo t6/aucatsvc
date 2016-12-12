@@ -2,6 +2,11 @@ SASSC?=	sassc
 KORE?=	kore
 INOTIFYWAIT?=	inotifywait
 
+SCSS_SRC=	src/app.scss \
+		src/_inputrange.scss \
+		src/_piano.scss \
+		src/_toolbar.scss
+
 all: aucatsvc.so
 
 run: all
@@ -10,10 +15,10 @@ run: all
 aucatsvc.so: src/aucatsvc.c assets/app.css assets/app.js assets/index.html
 	${KORE} build
 
-assets/app.css: src/app.scss src/_inputrange.scss src/_piano.scss
+assets/app.css: ${SCSS_SRC}
 	${SASSC} -t compressed src/app.scss > assets/app.css
 
-watch:
+watch: all
 	@${INOTIFYWAIT} -q -m -e close_write src assets | \
 		while read -r filename event; do ${MAKE} all || true; done
 

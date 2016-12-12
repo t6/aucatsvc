@@ -255,9 +255,10 @@ function logError(msg) {
 
 class InstrumentSelector {
     constructor() {
+	let element = document.createElement("div");
+	this._element = element;
 	let div = document.createElement("div");
 	div.classList = "instrument-selector";
-	this.div = div;
 	this.channel = 0;
 
 	let channels = document.createElement("select");
@@ -309,20 +310,25 @@ class InstrumentSelector {
 
 	div.appendChild(channels);
 	div.appendChild(select);
+	element.appendChild(div);
+
 	document.addEventListener("ProgramChange", e => {
 	});
     }
 
     get element() {
-	return this.div;
+	return this._element;
     }
 }
 
 class Piano {
     constructor() {
+	let toolbar = document.createElement("div");
+	toolbar.style.display = "inline-block";
+	this._toolbar = toolbar;
 	let div = document.createElement("div");
 	div.classList = "piano";
-	this.div = div;
+	this._element = div;
 
 	let pianoKeys = document.createElement("div");
 	pianoKeys.classList = "piano-keys";
@@ -387,25 +393,30 @@ class Piano {
 	    }
 	});
 
+	let selector = new InstrumentSelector();
+	let viewBtn = document.createElement("div");
+	viewBtn.classList = "toolbar-icon";
+
 	let btnGroup = document.createElement("div");
-	btnGroup.classList = "button-group";
-	let shiftUpBtn = document.createElement("button");
-	shiftUpBtn.innerText = "+";
-	let shiftDownBtn = document.createElement("button");
-	shiftDownBtn.innerText = "-";
-	let zoomInBtn = document.createElement("button");
-	zoomInBtn.innerText = "Z+";
-	let zoomOutBtn = document.createElement("button");
-	zoomOutBtn.innerText = "Z-";
+	let shiftUpBtn = document.createElement("div");
+	shiftUpBtn.classList = "toolbar-icon";
+	let shiftDownBtn = document.createElement("div");
+	shiftDownBtn.classList = "toolbar-icon";
+	let zoomInBtn = document.createElement("div");
+	zoomInBtn.classList = "toolbar-icon";
+	let zoomOutBtn = document.createElement("div");
+	zoomOutBtn.classList = "toolbar-icon";
 
-	btnGroup.appendChild(shiftUpBtn);
 	btnGroup.appendChild(shiftDownBtn);
-	btnGroup.appendChild(zoomInBtn);
+	btnGroup.appendChild(shiftUpBtn);
 	btnGroup.appendChild(zoomOutBtn);
-	btnGroup.appendChild(new InstrumentSelector().element);
+	btnGroup.appendChild(zoomInBtn);
 
+	toolbar.appendChild(btnGroup);
+
+	div.appendChild(selector.element);
 	div.appendChild(pianoKeys);
-	div.appendChild(btnGroup);
+	div.appendChild(toolbar);
 
 	shiftUpBtn.addEventListener("click", e => {
 	    this.notesUp();
@@ -521,14 +532,30 @@ class Piano {
     }
 
     get element() {
-	return this.div;
+	return this._element;
+    }
+
+    get toolbar() {
+	return this._toolbar;
+    }
+
+    hide() {
+	this.element.style.display = "none";
+	this.toolbar.style.display = "none";
+    }
+
+    show() {
+	this.element.style.display = "block";
+	this.toolbar.style.display = "inline-block";
     }
 }
 
 class VolumeControls {
     constructor() {
+	let toolbar = document.createElement("div");
+	this._toolbar = toolbar;
 	let ctls = document.createElement("div");
-	this.element = ctls;
+	this._element = ctls;
 	ctls.classList = "volume-controls";
 
 	for (let slot = -1; slot < 8; slot++) {
@@ -536,17 +563,14 @@ class VolumeControls {
 	    ctls.appendChild(ctl);
 	}
 
-	let buttonGroup = document.createElement("div");
-	buttonGroup.classList = "button-group";
-	let muteButton = document.createElement("button");
-	muteButton.innerText = "Mute all";
-	let maxButton = document.createElement("button");
-	maxButton.innerText = "Max all";
-	buttonGroup.appendChild(muteButton);
-	buttonGroup.appendChild(maxButton);
-	ctls.appendChild(buttonGroup);
-
-	ctls.appendChild(new Piano().element);
+	let muteButton = document.createElement("div");
+	muteButton.classList = "toolbar-icon";
+	// muteButton.innerText = "Mute all";
+	let maxButton = document.createElement("div");
+	maxButton.classList = "toolbar-icon";
+	// maxButton.innerText = "Max all";
+	toolbar.appendChild(muteButton);
+	toolbar.appendChild(maxButton);
 
 	muteButton.addEventListener("click", e => {
 	    for (let slot = -1; slot < 8; slot++) {
@@ -616,6 +640,24 @@ class VolumeControls {
 	return div;
     }
 
+    get element() {
+	return this._element;
+    }
+
+    get toolbar() {
+	return this._toolbar;
+    }
+
+    hide() {
+	this.element.style.display = "none";
+	this.toolbar.style.display = "none";
+    }
+
+    show() {
+	this.element.style.display = "block";
+	this.toolbar.style.display = "inline-block";
+    }
+
     getSlotElement(slot, child) {
 	if (slot == MASTER) {
 	    name = "master";
@@ -633,6 +675,61 @@ class VolumeControls {
 	this.getSlotElement(slot, "label").innerText = desc;
     }
 }
+
+class App {
+    constructor() {
+	let div = document.createElement("div");
+	div.classList = "app";
+	div.classList.add("sidebar-active");
+	this.div = div;
+
+	let content = document.createElement("div");
+	content.classList = "content";
+	div.appendChild(content);
+
+	let toolbar = document.createElement("div");
+	toolbar.classList = "toolbar";
+	content.appendChild(toolbar);
+
+	let volumeBtn = document.createElement("div");
+	volumeBtn.classList = "toolbar-icon";
+	let pianoBtn = document.createElement("div");
+	pianoBtn.classList = "toolbar-icon";
+	let volumeCtls = new VolumeControls();
+	let piano = new Piano();
+
+	toolbar.appendChild(volumeBtn);
+	toolbar.appendChild(pianoBtn);
+	// TODO: separator
+	content.appendChild(volumeCtls.element);
+	toolbar.appendChild(volumeCtls.toolbar);
+	content.appendChild(piano.element);
+	toolbar.appendChild(piano.toolbar);
+
+	volumeCtls.show();
+	piano.hide();
+	// volumeCtls.hide();
+	volumeBtn.classList.add("toolbar-icon-active");
+
+	pianoBtn.addEventListener("click", e => {
+	    volumeCtls.hide();
+	    piano.show();
+	    pianoBtn.classList.add("toolbar-icon-active");
+	    volumeBtn.classList.remove("toolbar-icon-active");
+	});
+	volumeBtn.addEventListener("click", e => {
+	    volumeCtls.show();
+	    piano.hide();
+	    volumeBtn.classList.add("toolbar-icon-active");
+	    pianoBtn.classList.remove("toolbar-icon-active");
+	});
+    }
+
+    get element() {
+	return this.div;
+    }
+}
+
 
 class MIDIProcessor {
     constructor() {
@@ -920,9 +1017,8 @@ document.addEventListener("DOMContentLoaded", function() {
     let conn = new Connection(url);
     let ctlmidi = new MIDIControlProcessor();
     let midi = new MIDIEventProcessor();
-    let ctls = new VolumeControls();
-    let app = document.getElementById("app");
-    app.appendChild(ctls.element);
+    let app = new App();
+    document.body.appendChild(app.element);
 
     document.addEventListener("MIDIMessage", (e) => {
 	midi.process(e.detail);

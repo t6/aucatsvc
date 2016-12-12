@@ -224,7 +224,9 @@ aucat_reader(struct kore_task *t)
 		if (mio_pollfd(midi_hdl, pfds + aucat_nfds, POLLIN) < 0)
 			goto error;
 
-		if (poll(pfds, nfds, -1) < 0) {
+		while (poll(pfds, nfds, -1) < 0) {
+			if (errno == EINTR)
+				continue;
 			kore_log(LOG_NOTICE, "poll: %s", errno_s);
 			goto error;
 		}

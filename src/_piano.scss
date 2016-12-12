@@ -6,9 +6,22 @@
 
 $piano-key-highlight-color: red !default;
 $piano-key-disabled-color: gray !default;
+$piano-key-height: 240px !default;
 
 .piano {
     overflow: hidden;
+}
+
+.piano .instrument-selector {
+    display: flow;
+    margin: $toolbar-icon-margin;
+}
+
+.piano .instrument-selector select {
+    flow: auto;
+    color: $text-color;
+    background-color: $track-color;
+    margin-right: $toolbar-icon-margin;
 }
 
 .piano-keys {
@@ -26,7 +39,7 @@ $piano-key-disabled-color: gray !default;
     display: inline-block;
     position: relative;
     width: 50px;
-    height: 180px;
+    height: $piano-key-height;
     margin: 0 2px 2px 0;
     background: #fff;
     border-radius: 0 0 4px 4px;
@@ -50,7 +63,7 @@ $piano-key-disabled-color: gray !default;
     left: -16px;
     display: inline-block;
     width: 32px;
-    height: 117px;
+    height: $piano-key-height * 2/3;
     background: #000;
     border-radius: 0 0 4px 4px;
     box-shadow: 1px 1px 0 #555, 2px 2px 0 #555;
