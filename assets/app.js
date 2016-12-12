@@ -252,23 +252,65 @@ function logError(msg) {
     });
 }
 
-function icon(id) {
-    let e = document.getElementById("icon-" + id).cloneNode(true);
-    e.classList = "toolbar-icon";
-    delete e.id;
-    return e;
+class ToolbarItem {
+    constructor(icon) {
+	let e = document.getElementById("icon-" + icon).cloneNode(true);
+	e.classList = "toolbar-icon";
+	e.id = "";
+	delete e.id;
+	this.element = e;
+    }
+
+    addClickEventListener(f) {
+	this.element.addEventListener("touchstart", e => {
+	    e.preventDefault();
+	    this.active = true;
+	});
+	this.element.addEventListener("touchend", e => {
+	    f(e);
+	    this.active = false;
+	});
+	this.element.addEventListener("click", f);
+    }
+
+    get active() {
+	this.element.classList.contains("toolbar-icon-active");
+    }
+
+    set active(value) {
+	if (value) {
+	    this.element.classList.add("toolbar-icon-active");
+	} else {
+	    this.element.classList.remove("toolbar-icon-active");
+	}
+    }
 }
 
-function onIconClick(btn, f) {
-    btn.addEventListener("touchstart", e => {
-	e.preventDefault();
-	btn.classList.add("toolbar-icon-active");
-    });
-    btn.addEventListener("touchend", e => {
-	f(e);
-	btn.classList.remove("toolbar-icon-active");
-    });
-    btn.addEventListener("click", f);
+class ToolbarGroupItem extends ToolbarItem {
+    constructor(icon) {
+	super(icon);
+	this.group = [];
+    }
+
+    setGroup(group) {
+	this.group = group;
+    }
+
+    addClickEventListener(f) {
+	this.element.addEventListener("touchstart", e => {
+	    e.preventDefault();
+	    this.group.forEach(x => x.active = false);
+	    this.active = true;
+	});
+	this.element.addEventListener("touchend", e => {
+	    f(e);
+	});
+	this.element.addEventListener("click", e => {
+	    f(e);
+	    this.group.forEach(x => x.active = false);
+	    this.active = true;
+	});
+    }
 }
 
 class InstrumentSelector {
@@ -414,15 +456,15 @@ class Piano {
 	let selector = new InstrumentSelector();
 
 	let btnGroup = document.createElement("div");
-	let shiftUpBtn = icon("caret-right");
-	let shiftDownBtn = icon("caret-left");
-	let zoomInBtn = icon("search-plus");
-	let zoomOutBtn = icon("search-minus");
+	let shiftUpBtn = new ToolbarItem("caret-right");
+	let shiftDownBtn = new ToolbarItem("caret-left");
+	let zoomInBtn = new ToolbarItem("search-plus");
+	let zoomOutBtn = new ToolbarItem("search-minus");
 
-	btnGroup.appendChild(shiftDownBtn);
-	btnGroup.appendChild(shiftUpBtn);
-	btnGroup.appendChild(zoomOutBtn);
-	btnGroup.appendChild(zoomInBtn);
+	btnGroup.appendChild(shiftDownBtn.element);
+	btnGroup.appendChild(shiftUpBtn.element);
+	btnGroup.appendChild(zoomOutBtn.element);
+	btnGroup.appendChild(zoomInBtn.element);
 
 	toolbar.appendChild(btnGroup);
 
@@ -430,10 +472,10 @@ class Piano {
 	div.appendChild(pianoKeys);
 	div.appendChild(toolbar);
 
-	onIconClick(shiftUpBtn, e => this.notesUp());
-	onIconClick(shiftDownBtn, e => this.notesDown());
-	onIconClick(zoomInBtn, e => this.zoomInKeys());
-	onIconClick(zoomOutBtn, e => this.zoomOutKeys());
+	shiftUpBtn.addClickEventListener(e => this.notesUp());
+	shiftDownBtn.addClickEventListener(e => this.notesDown());
+	zoomInBtn.addClickEventListener(e => this.zoomInKeys());
+	zoomOutBtn.addClickEventListener(e => this.zoomOutKeys());
 
 	document.addEventListener("NoteOn", e => {
 	    let note = e.detail.note;
@@ -565,12 +607,12 @@ class VolumeControls {
 	    ctls.appendChild(ctl);
 	}
 
-	let muteButton = icon("volume-off");
-	let maxButton = icon("volume-up");
-	toolbar.appendChild(muteButton);
-	toolbar.appendChild(maxButton);
+	let muteButton = new ToolbarItem("volume-off");
+	let maxButton = new ToolbarItem("volume-up");
+	toolbar.appendChild(muteButton.element);
+	toolbar.appendChild(maxButton.element);
 
-	muteButton.addEventListener("click", e => {
+	muteButton.addClickEventListener(e => {
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
 		    detail: {
@@ -581,7 +623,7 @@ class VolumeControls {
 		document.dispatchEvent(event);
 	    }
 	});
-	maxButton.addEventListener("click", e => {
+	maxButton.addClickEventListener(e => {
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
 		    detail: {
@@ -689,13 +731,16 @@ class App {
 	toolbar.classList = "toolbar";
 	content.appendChild(toolbar);
 
-	let volumeBtn = icon("bullhorn");
-	let pianoBtn = icon("music");
+	let volumeBtn = new ToolbarGroupItem("bullhorn");
+	let pianoBtn = new ToolbarGroupItem("music");
+	let itemGroup = [volumeBtn, pianoBtn];
+	itemGroup.forEach(x => x.setGroup(itemGroup));
+
 	let volumeCtls = new VolumeControls();
 	let piano = new Piano();
 
-	toolbar.appendChild(volumeBtn);
-	toolbar.appendChild(pianoBtn);
+	toolbar.appendChild(volumeBtn.element);
+	toolbar.appendChild(pianoBtn.element);
 	// TODO: separator
 	content.appendChild(volumeCtls.element);
 	toolbar.appendChild(volumeCtls.toolbar);
@@ -708,35 +753,16 @@ class App {
 
 	volumeCtls.show();
 	piano.hide();
-	// volumeCtls.hide();
-	volumeBtn.classList.add("toolbar-icon-active");
+	volumeBtn.active = true;
 
-	let pianoBtnClicked = e => {
-	    e.preventDefault();
+	pianoBtn.addClickEventListener(e => {
 	    volumeCtls.hide();
 	    piano.show();
-	    pianoBtn.classList.add("toolbar-icon-active");
-	    volumeBtn.classList.remove("toolbar-icon-active");
-	};
-	pianoBtn.addEventListener("touchstart", e => {
-	    e.preventDefault()
-	    pianoBtn.classList.add("toolbar-icon-active");
 	});
-	pianoBtn.addEventListener("touchend", pianoBtnClicked);
-	pianoBtn.addEventListener("click", pianoBtnClicked);
-	let volumeBtnClicked = e => {
-	    e.preventDefault();
+	volumeBtn.addClickEventListener(e => {
 	    volumeCtls.show();
 	    piano.hide();
-	    volumeBtn.classList.add("toolbar-icon-active");
-	    pianoBtn.classList.remove("toolbar-icon-active");
-	};
-	volumeBtn.addEventListener("touchstart", e => {
-	    e.preventDefault()
-	    volumeBtn.classList.add("toolbar-icon-active");
 	});
-	volumeBtn.addEventListener("touchend", volumeBtnClicked);
-	volumeBtn.addEventListener("click", volumeBtnClicked);
     }
 
     get element() {
