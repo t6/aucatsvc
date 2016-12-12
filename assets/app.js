@@ -253,10 +253,22 @@ function logError(msg) {
 }
 
 function icon(id) {
-    var e = document.getElementById("icon-" + id).cloneNode(true);
+    let e = document.getElementById("icon-" + id).cloneNode(true);
     e.classList = "toolbar-icon";
     delete e.id;
     return e;
+}
+
+function onIconClick(btn, f) {
+    btn.addEventListener("touchstart", e => {
+	e.preventDefault();
+	btn.classList.add("toolbar-icon-active");
+    });
+    btn.addEventListener("touchend", e => {
+	f(e);
+	btn.classList.remove("toolbar-icon-active");
+    });
+    btn.addEventListener("click", f);
 }
 
 class InstrumentSelector {
@@ -418,18 +430,10 @@ class Piano {
 	div.appendChild(pianoKeys);
 	div.appendChild(toolbar);
 
-	shiftUpBtn.addEventListener("click", e => {
-	    this.notesUp();
-	});
-	shiftDownBtn.addEventListener("click", e => {
-	    this.notesDown();
-	});
-	zoomInBtn.addEventListener("click", e => {
-	    this.zoomInKeys();
-	});
-	zoomOutBtn.addEventListener("click", e => {
-	    this.zoomOutKeys();
-	});
+	onIconClick(shiftUpBtn, e => this.notesUp());
+	onIconClick(shiftDownBtn, e => this.notesDown());
+	onIconClick(zoomInBtn, e => this.zoomInKeys());
+	onIconClick(zoomOutBtn, e => this.zoomOutKeys());
 
 	document.addEventListener("NoteOn", e => {
 	    let note = e.detail.note;
@@ -707,18 +711,32 @@ class App {
 	// volumeCtls.hide();
 	volumeBtn.classList.add("toolbar-icon-active");
 
-	pianoBtn.addEventListener("click", e => {
+	let pianoBtnClicked = e => {
+	    e.preventDefault();
 	    volumeCtls.hide();
 	    piano.show();
 	    pianoBtn.classList.add("toolbar-icon-active");
 	    volumeBtn.classList.remove("toolbar-icon-active");
+	};
+	pianoBtn.addEventListener("touchstart", e => {
+	    e.preventDefault()
+	    pianoBtn.classList.add("toolbar-icon-active");
 	});
-	volumeBtn.addEventListener("click", e => {
+	pianoBtn.addEventListener("touchend", pianoBtnClicked);
+	pianoBtn.addEventListener("click", pianoBtnClicked);
+	let volumeBtnClicked = e => {
+	    e.preventDefault();
 	    volumeCtls.show();
 	    piano.hide();
 	    volumeBtn.classList.add("toolbar-icon-active");
 	    pianoBtn.classList.remove("toolbar-icon-active");
+	};
+	volumeBtn.addEventListener("touchstart", e => {
+	    e.preventDefault()
+	    volumeBtn.classList.add("toolbar-icon-active");
 	});
+	volumeBtn.addEventListener("touchend", volumeBtnClicked);
+	volumeBtn.addEventListener("click", volumeBtnClicked);
     }
 
     get element() {
