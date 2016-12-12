@@ -18,6 +18,8 @@ $piano-key-disabled-color: gray !default;
     white-space: nowrap;
     overflow: hidden;
     border-radius: 0 0 4px 4px;
+
+    transition: all 250ms;
 }
 
 .piano-key {
