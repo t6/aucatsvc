@@ -9,22 +9,17 @@ div.toolbar div {
 
 .toolbar-icon {
     display: inline-block;
-    width: $toolbar-icon-size;
-    height: $toolbar-icon-size;
+    width: $toolbar-icon-size - 10px;
+    height: $toolbar-icon-size - 10px;
+    padding: 5px;
     background: $track-color;
     cursor: pointer;
     border-radius: 5px;
 
     transition: all $toolbar-animation-duration;
 
-    &:before {
-	content: 'M';
-	display: inline-block;
-	width: $toolbar-icon-size;
-	height: $toolbar-icon-size;
-	color: $text-color;
-	text-align: center;
-	line-height: $toolbar-icon-size;
+    path {
+	fill: $text-color;
     }
 
     &:hover {
@@ -36,4 +31,9 @@ div.toolbar div {
 
 .toolbar-icon-active {
     background: $thumb-color;
+}
+
+.toolbar .error-message {
+    margin-left: $toolbar-icon-size / 8;
+    color: red;
 }

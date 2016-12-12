@@ -247,10 +247,16 @@ const MASTER = -1;
 
 function logError(msg) {
     console.log(msg);
-    let e = document.getElementById("error");
-    if (e) {
+    document.querySelectorAll(".error-message").forEach(e => {
 	e.innerText = msg;
-    }
+    });
+}
+
+function icon(id) {
+    var e = document.getElementById("icon-" + id).cloneNode(true);
+    e.classList = "toolbar-icon";
+    delete e.id;
+    return e;
 }
 
 class InstrumentSelector {
@@ -265,7 +271,7 @@ class InstrumentSelector {
 	for (let i = 0; i < 16; i++) {
 	    let option = document.createElement("option");
 	    option.value = i;
-	    option.innerText = "chan " + i;
+	    option.innerText = "channel " + i;
 	    channels.appendChild(option);
 	}
 
@@ -394,18 +400,12 @@ class Piano {
 	});
 
 	let selector = new InstrumentSelector();
-	let viewBtn = document.createElement("div");
-	viewBtn.classList = "toolbar-icon";
 
 	let btnGroup = document.createElement("div");
-	let shiftUpBtn = document.createElement("div");
-	shiftUpBtn.classList = "toolbar-icon";
-	let shiftDownBtn = document.createElement("div");
-	shiftDownBtn.classList = "toolbar-icon";
-	let zoomInBtn = document.createElement("div");
-	zoomInBtn.classList = "toolbar-icon";
-	let zoomOutBtn = document.createElement("div");
-	zoomOutBtn.classList = "toolbar-icon";
+	let shiftUpBtn = icon("caret-right");
+	let shiftDownBtn = icon("caret-left");
+	let zoomInBtn = icon("search-plus");
+	let zoomOutBtn = icon("search-minus");
 
 	btnGroup.appendChild(shiftDownBtn);
 	btnGroup.appendChild(shiftUpBtn);
@@ -516,6 +516,7 @@ class Piano {
     }
 
     notesUp() {
+	// We move by one octave (7 white keys)
 	this.zoomAndShiftKeys(this.zoomLevel, this.shift + 7);
     }
 
@@ -560,12 +561,8 @@ class VolumeControls {
 	    ctls.appendChild(ctl);
 	}
 
-	let muteButton = document.createElement("div");
-	muteButton.classList = "toolbar-icon";
-	// muteButton.innerText = "Mute all";
-	let maxButton = document.createElement("div");
-	maxButton.classList = "toolbar-icon";
-	// maxButton.innerText = "Max all";
+	let muteButton = icon("volume-off");
+	let maxButton = icon("volume-up");
 	toolbar.appendChild(muteButton);
 	toolbar.appendChild(maxButton);
 
@@ -688,10 +685,8 @@ class App {
 	toolbar.classList = "toolbar";
 	content.appendChild(toolbar);
 
-	let volumeBtn = document.createElement("div");
-	volumeBtn.classList = "toolbar-icon";
-	let pianoBtn = document.createElement("div");
-	pianoBtn.classList = "toolbar-icon";
+	let volumeBtn = icon("bullhorn");
+	let pianoBtn = icon("music");
 	let volumeCtls = new VolumeControls();
 	let piano = new Piano();
 
@@ -702,6 +697,10 @@ class App {
 	toolbar.appendChild(volumeCtls.toolbar);
 	content.appendChild(piano.element);
 	toolbar.appendChild(piano.toolbar);
+
+	let err = document.createElement("div");
+	err.classList = "error-message";
+	toolbar.appendChild(err);
 
 	volumeCtls.show();
 	piano.hide();
