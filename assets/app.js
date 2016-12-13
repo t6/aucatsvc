@@ -836,21 +836,27 @@ class MIDIProcessor {
 			    cmd: cmd,
 			    ch: ch,
 			    note: this.idata[0],
-			    velocity: EV_NOFF_DEFAULTVEL
+			    velocity: this.idata[1]
+			});
+		    } else if (cmd == EV_NON && this.idata[1] == 0) {
+			this.onMIDIEvent({
+			    cmd: EV_NOFF,
+			    ch: ch,
+			    note: this.idata[0],
+			    velocity: this.idata[1],
 			});
 		    } else if (cmd == EV_NOFF) {
 			this.onMIDIEvent({
 			    cmd: cmd,
 			    ch: ch,
 			    note: this.idata[0],
-			    velocity: EV_NOFF_DEFAULTVEL
+			    velocity: 0,
 			});
 		    } else if (cmd == EV_BEND) {
 			this.onMIDIEvent({
 			    cmd: cmd,
 			    ch: ch,
 			    bend: (this.idata[1] << 7) + this.idata[0],
-			    velocity: EV_NOFF_DEFAULTVEL
 			});
 		    } else {
 			this.onMIDIEvent({
@@ -967,6 +973,7 @@ class MIDIControlProcessor extends MIDIProcessor {
 
 class MIDIEventProcessor extends MIDIProcessor {
     onMIDIEvent(data) {
+	console.log(data);
 	// if (data.cmd == EV_CTL) {
 	// slot = data.ch;
 	// volume = data.v1;
