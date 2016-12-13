@@ -54,7 +54,9 @@ struct kore_wscbs aucat_wscbs = {
 	websocket_disconnect
 };
 
-static struct mio_hdl *aucat_hdl = NULL, *midi_hdl = NULL;
+static struct mio_hdl *aucat_hdl = NULL;
+static struct mio_hdl *midi_in = NULL;
+static struct mio_hdl *midi_out = NULL;
 struct kore_task aucat_reader_task;
 
 #if defined(KORE_NO_TLS)
@@ -81,11 +83,17 @@ init(int state)
 				kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
 				return (KORE_RESULT_ERROR);
 			}
-			midi_hdl = mio_open(MIDIDEVICE, MIO_OUT | MIO_IN, 0);
-			if (midi_hdl == NULL) {
+			midi_in = mio_open(MIDIDEVICE, MIO_IN, 0);
+			if (midi_in == NULL) {
 				kore_log(LOG_WARNING, "unable to open %s", MIDIDEVICE);
 				return (KORE_RESULT_ERROR);
 			}
+			midi_out = mio_open(MIDIDEVICE, MIO_OUT, 0);
+			if (midi_out == NULL) {
+				kore_log(LOG_WARNING, "unable to open %s", MIDIDEVICE);
+				return (KORE_RESULT_ERROR);
+			}
+
 
 			kore_task_create(&aucat_reader_task, aucat_reader);
 			kore_task_bind_callback(&aucat_reader_task, data_available);
@@ -101,7 +109,8 @@ init(int state)
 	case KORE_MODULE_UNLOAD:
 		if (worker->id == WORKER_ID) {
 			mio_close(aucat_hdl);
-			mio_close(midi_hdl);
+			mio_close(midi_in);
+			mio_close(midi_out);
 			kore_task_destroy(&aucat_reader_task);
 		}
 		break;
@@ -194,7 +203,7 @@ websocket_message(struct connection *c, u_int8_t op, void *buf, size_t len)
 			mio_write(aucat_hdl, data + 1, len - 1);
 			break;
 		case AUCATSVC_MIDI:
-			mio_write(midi_hdl, data + 1, len - 1);
+			mio_write(midi_out, data + 1, len - 1);
 			break;
 		default:
 			kore_log(LOG_NOTICE, "Ignored message type: %d", data[0]);
@@ -224,7 +233,7 @@ aucat_reader(struct kore_task *t)
 	int aucat_nfds, midi_nfds, nfds, ev;
 
 	aucat_nfds = mio_nfds(aucat_hdl);
-	midi_nfds = mio_nfds(midi_hdl);
+	midi_nfds = mio_nfds(midi_in);
 	nfds = aucat_nfds + midi_nfds;
 
 	pfds = kore_calloc(nfds, sizeof(struct pollfd));
@@ -234,7 +243,7 @@ aucat_reader(struct kore_task *t)
 	for (;;) {
 		if (mio_pollfd(aucat_hdl, pfds, POLLIN) < 0)
 			goto error;
-		if (mio_pollfd(midi_hdl, pfds + aucat_nfds, POLLIN) < 0)
+		if (mio_pollfd(midi_in, pfds + aucat_nfds, POLLIN) < 0)
 			goto error;
 
 		while (poll(pfds, nfds, -1) < 0) {
@@ -255,10 +264,10 @@ aucat_reader(struct kore_task *t)
 		} else if (ev & POLLHUP)
 			goto error;
 
-		ev = mio_revents(midi_hdl, pfds + aucat_nfds);
+		ev = mio_revents(midi_in, pfds + aucat_nfds);
 		if (ev & POLLIN) {
 			buf[0] = AUCATSVC_MIDI;
-			ret = mio_read(midi_hdl, buf + 1, sizeof(buf) - 1);
+			ret = mio_read(midi_in, buf + 1, sizeof(buf) - 1);
 			if (ret > 0) {
 				kore_task_channel_write(t, buf, ret + 1);
 			}
