@@ -506,6 +506,7 @@ class Piano {
 		if (key) {
 		    key.classList.remove("piano-key-pressed");
 		    key.classList.remove("piano-key-highlight");
+		    key.classList.remove("piano-key-touch-move");
 		}
 	    }
 	});
@@ -541,7 +542,6 @@ class Piano {
     }
 
     noteOn(key) {
-	key.classList.add("piano-key-pressed");
 	if (key.note > 127) return;
 	let event = new CustomEvent("NoteOnRequest", {
 	    detail: {
@@ -554,8 +554,6 @@ class Piano {
     }
 
     noteOff(key) {
-	key.classList.remove("piano-key-pressed");
-	key.classList.remove("piano-key-touch-move");
 	if (key.note > 127) return;
 	let event = new CustomEvent("NoteOffRequest", {
 	    detail: {
