@@ -1,6 +1,8 @@
 *.o
 .flavor
 .objs
-sndio-aucatctl.so
+aucatsvc.so
 assets.h
+assets/app.css
 cert
+*.core
