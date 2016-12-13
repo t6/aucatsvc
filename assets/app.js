@@ -314,20 +314,10 @@ class ToolbarGroupItem extends ToolbarItem {
 }
 
 class InstrumentSelector {
-    constructor() {
-	let element = document.createElement("div");
-	this._element = element;
+    constructor(channel) {
 	let div = document.createElement("div");
-	div.classList = "instrument-selector";
-	this.channel = 0;
-
-	let channels = document.createElement("select");
-	for (let i = 0; i < 16; i++) {
-	    let option = document.createElement("option");
-	    option.value = i;
-	    option.innerText = "channel " + i;
-	    channels.appendChild(option);
-	}
+	this._element = div;
+	this.channel = channel;
 
 	let select = document.createElement("select");
 	let option = document.createElement("option");
@@ -357,27 +347,25 @@ class InstrumentSelector {
 	    document.dispatchEvent(event);
 	});
 
-	channels.addEventListener("change", e => {
-	    let chan = parseInt(e.target.value, 10);
-	    let event = new CustomEvent("ChannelChange", {
-		detail: {
-		    channel: chan
-		}
-	    });
-	    document.dispatchEvent(event);
-	    this.channel = chan;
-	});
-
-	div.appendChild(channels);
 	div.appendChild(select);
-	element.appendChild(div);
 
 	document.addEventListener("ProgramChange", e => {
+	    if (e.detail.channel == this.channel) {
+		select.value = e.detail.instrument;
+	    }
 	});
     }
 
     get element() {
 	return this._element;
+    }
+
+    hide() {
+	this.element.style.display = "none";
+    }
+
+    show() {
+	this.element.style.display = "inline-block";
     }
 }
 
@@ -453,7 +441,23 @@ class Piano {
 	    }
 	});
 
-	let selector = new InstrumentSelector();
+	let channels = document.createElement("select");
+	for (let i = 0; i < 16; i++) {
+	    let option = document.createElement("option");
+	    option.value = i;
+	    option.innerText = "channel " + i;
+	    channels.appendChild(option);
+	}
+
+	let instrumentSelectorDiv = document.createElement("div");
+	let instrumentSelectors = [];
+	for (let i = 0; i < 16; i++) {
+	    let selector = new InstrumentSelector(i);
+	    instrumentSelectorDiv.appendChild(selector.element);
+	    selector.hide();
+	    instrumentSelectors.push(selector);
+	}
+	instrumentSelectors[0].show();
 
 	let btnGroup = document.createElement("div");
 	let shiftUpBtn = new ToolbarItem("caret-right");
@@ -468,7 +472,8 @@ class Piano {
 
 	toolbar.appendChild(btnGroup);
 
-	div.appendChild(selector.element);
+	div.appendChild(channels);
+	div.appendChild(instrumentSelectorDiv);
 	div.appendChild(pianoKeys);
 	div.appendChild(toolbar);
 
@@ -494,8 +499,19 @@ class Piano {
 	    }
 	});
 
-	document.addEventListener("ChannelChange", e => {
-	    this.channel = e.detail.channel;
+	channels.addEventListener("change", e => {
+	    let chan = parseInt(e.target.value, 10);
+	    let event = new CustomEvent("ChannelChange", {
+		detail: {
+		    channel: chan
+		}
+	    });
+	    document.dispatchEvent(event);
+
+	    instrumentSelectors[this.channel].hide();
+	    instrumentSelectors[chan].show();
+
+	    this.channel = chan;
 	});
 
 	this.zoomAndShiftKeys(this.zoomLevel, this.shift);
@@ -991,6 +1007,14 @@ class MIDIEventProcessor extends MIDIProcessor {
 		detail: {
 		    note: data.note,
 		    velocity: data.velocity
+		}
+	    });
+	    document.dispatchEvent(event);
+	} else if (data.cmd == EV_PC) {
+	    let event = new CustomEvent("ProgramChange", {
+		detail: {
+		    channel: data.ch,
+		    instrument: data.v0,
 		}
 	    });
 	    document.dispatchEvent(event);
