@@ -57,36 +57,49 @@ struct kore_wscbs aucat_wscbs = {
 static struct mio_hdl *aucat_hdl = NULL, *midi_hdl = NULL;
 struct kore_task aucat_reader_task;
 
+#if defined(KORE_NO_TLS)
+/* With TLS disabled there is no keymgr worker running */
+#define WORKER_ID 0
+#else
+#define WORKER_ID 1
+#endif
+
 int
 init(int state)
 {
 	switch (state) {
 	case KORE_MODULE_LOAD:
-		if (worker->id == 1) {
+		if (worker->id == WORKER_ID) {
+#if !defined(DEVELOPMENT)
+			/* sndio looks for the .aucat_cookie file at
+			 * home.  Make sure it can be found in the
+			 * chroot. */
+			putenv("HOME=/");
+#endif
 			aucat_hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
 			if (aucat_hdl == NULL) {
 				kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
 				return (KORE_RESULT_ERROR);
 			}
-
-			kore_task_create(&aucat_reader_task, aucat_reader);
-			kore_task_bind_callback(&aucat_reader_task, data_available);
 			midi_hdl = mio_open(MIDIDEVICE, MIO_OUT | MIO_IN, 0);
 			if (midi_hdl == NULL) {
 				kore_log(LOG_WARNING, "unable to open %s", MIDIDEVICE);
 				return (KORE_RESULT_ERROR);
 			}
+
+			kore_task_create(&aucat_reader_task, aucat_reader);
+			kore_task_bind_callback(&aucat_reader_task, data_available);
 		}
 #ifdef KORE_MODULE_ENTER_SANDBOX
 		break;
 	case KORE_MODULE_ENTER_SANDBOX:
 #endif
-		if (worker->id == 1) {
+		if (worker->id == WORKER_ID) {
 			kore_task_run(&aucat_reader_task);
 		}
 		break;
 	case KORE_MODULE_UNLOAD:
-		if (worker->id == 1) {
+		if (worker->id == WORKER_ID) {
 			mio_close(aucat_hdl);
 			mio_close(midi_hdl);
 			kore_task_destroy(&aucat_reader_task);
@@ -135,7 +148,7 @@ http_file_response(struct http_request *req, const char *filename)
 		http_response(req, 200, asset_index_html, asset_len_index_html);
 	} else {
 		kore_log(LOG_WARNING, "unknown asset: %s", filename);
-		http_response(req, 500, NULL, 0);
+		http_response(req, 404, NULL, 0);
 	}
 #endif
 }

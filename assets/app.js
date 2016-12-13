@@ -1053,7 +1053,8 @@ class Connection {
 };
 
 document.addEventListener("DOMContentLoaded", function() {
-    let url = "wss://" + location.host + "/aucat";
+    let protocol = location.protocol == "http:" ? "ws:" : "wss:";
+    let url = protocol + "//" + location.host + "/aucat";
     let conn = new Connection(url);
     let ctlmidi = new MIDIControlProcessor();
     let midi = new MIDIEventProcessor();
