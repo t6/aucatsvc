@@ -331,6 +331,7 @@ class InstrumentSelector {
 		let option = document.createElement("option");
 		option.value = prog;
 		option.innerText = "" + prog + " " + category + " - " + name;
+
 		select.appendChild(option);
 	    });
 	});
@@ -370,7 +371,7 @@ class InstrumentSelector {
 }
 
 class Piano {
-    constructor() {
+    constructor(initialChannel) {
 	let toolbar = document.createElement("div");
 	toolbar.style.display = "inline-block";
 	this._toolbar = toolbar;
@@ -380,10 +381,22 @@ class Piano {
 
 	let pianoKeys = document.createElement("div");
 	pianoKeys.classList = "piano-keys";
-	this.pianoKeys = pianoKeys;
+	this._pianoKeys = pianoKeys;
 	this.zoomLevel = 7;
 	this.shift = 4 * 7;
-	this.channel = 0;
+
+	let instrumentSelectorDiv = document.createElement("div");
+	let instrumentSelectors = [];
+	this._instrumentSelectors = instrumentSelectors;
+	for (let i = 0; i < 16; i++) {
+	    let selector = new InstrumentSelector(i);
+	    instrumentSelectorDiv.appendChild(selector.element);
+	    selector.hide();
+	    instrumentSelectors.push(selector);
+	}
+	instrumentSelectors[0].show();
+
+	this.channel = initialChannel === undefined ? 0 : initialChannel;
 
 	// Create more keys than we have.  These look better than
 	// empty space when the keyboard was shifted too much.
@@ -404,7 +417,11 @@ class Piano {
 	     * When the mouse button is released and the pointer leaves
 	     * the element send a note off event
 	     */
-	    key.addEventListener("mouseout", noteOff);
+	    key.addEventListener("mouseout", e => {
+		if (e.target.classList.contains("piano-key-pressed")) {
+		    this.noteOff(e.target);
+		}
+	    });
 	    key.addEventListener("mouseover", e => {
 		if (e.buttons == 1) {
 		    e.preventDefault();
@@ -449,16 +466,6 @@ class Piano {
 	    channels.appendChild(option);
 	}
 
-	let instrumentSelectorDiv = document.createElement("div");
-	let instrumentSelectors = [];
-	for (let i = 0; i < 16; i++) {
-	    let selector = new InstrumentSelector(i);
-	    instrumentSelectorDiv.appendChild(selector.element);
-	    selector.hide();
-	    instrumentSelectors.push(selector);
-	}
-	instrumentSelectors[0].show();
-
 	let btnGroup = document.createElement("div");
 	let shiftUpBtn = new ToolbarItem("caret-right");
 	let shiftDownBtn = new ToolbarItem("caret-left");
@@ -483,19 +490,23 @@ class Piano {
 	zoomOutBtn.addClickEventListener(e => this.zoomOutKeys());
 
 	document.addEventListener("NoteOn", e => {
-	    let note = e.detail.note;
-	    let key = pianoKeys.querySelector(".note-" + note);
-	    if (key) {
-		key.classList.add("piano-key-pressed");
-		key.classList.add("piano-key-highlight");
+	    if (this.channel == e.detail.channel) {
+		let note = e.detail.note;
+		let key = pianoKeys.querySelector(".note-" + note);
+		if (key) {
+		    key.classList.add("piano-key-pressed");
+		    key.classList.add("piano-key-highlight");
+		}
 	    }
 	});
 	document.addEventListener("NoteOff", e => {
-	    let note = e.detail.note;
-	    let key = pianoKeys.querySelector(".note-" + note);
-	    if (key) {
-		key.classList.remove("piano-key-pressed");
-		key.classList.remove("piano-key-highlight");
+	    if (this.channel == e.detail.channel) {
+		let note = e.detail.note;
+		let key = pianoKeys.querySelector(".note-" + note);
+		if (key) {
+		    key.classList.remove("piano-key-pressed");
+		    key.classList.remove("piano-key-highlight");
+		}
 	    }
 	});
 
@@ -515,6 +526,18 @@ class Piano {
 	});
 
 	this.zoomAndShiftKeys(this.zoomLevel, this.shift);
+    }
+
+    set channel(val) {
+	this._channel = val;
+	this._pianoKeys.querySelectorAll(".piano-key-pressed").forEach(x => {
+	    x.classList.remove("piano-key-pressed");
+	    x.classList.remove("piano-key-highlight");
+	});
+    }
+
+    get channel() {
+	return this._channel;
     }
 
     noteOn(key) {
@@ -562,7 +585,7 @@ class Piano {
 
 	let d = 52 * this.shift;
 	let scaleX = levels[level];
-	this.pianoKeys.style.transform = "scale(" + scaleX + ", 1) translate(-" + d + "px)";
+	this._pianoKeys.style.transform = "scale(" + scaleX + ", 1) translate(-" + d + "px)";
     }
 
     zoomInKeys() {
@@ -753,7 +776,7 @@ class App {
 	itemGroup.forEach(x => x.setGroup(itemGroup));
 
 	let volumeCtls = new VolumeControls();
-	let piano = new Piano();
+	let piano = new Piano(0);
 
 	toolbar.appendChild(volumeBtn.element);
 	toolbar.appendChild(pianoBtn.element);
@@ -997,6 +1020,7 @@ class MIDIEventProcessor extends MIDIProcessor {
 	if (data.cmd == EV_NON) {
 	    let event = new CustomEvent("NoteOn", {
 		detail: {
+		    channel: data.ch,
 		    note: data.note,
 		    velocity: data.velocity
 		}
@@ -1005,6 +1029,7 @@ class MIDIEventProcessor extends MIDIProcessor {
 	} else if (data.cmd == EV_NOFF) {
 	    let event = new CustomEvent("NoteOff", {
 		detail: {
+		    channel: data.ch,
 		    note: data.note,
 		    velocity: data.velocity
 		}

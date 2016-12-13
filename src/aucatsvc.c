@@ -259,7 +259,6 @@ aucat_reader(struct kore_task *t)
 			ret = mio_read(aucat_hdl, buf + 1, sizeof(buf) - 1);
 			if (ret > 0) {
 				kore_task_channel_write(t, buf, ret + 1);
-
 			}
 		} else if (ev & POLLHUP)
 			goto error;
