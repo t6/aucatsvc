@@ -183,7 +183,7 @@ const INSTRUMENTS = [
 	[126, 'Applause'],
 	[127, 'Gunshot']
     ]]
-]
+];
 
 const AUCATSVC_CONTROL = 1;
 const AUCATSVC_MIDI = 2;
@@ -386,6 +386,7 @@ class Piano {
 	this.shift = 4 * 7;
 
 	let instrumentSelectorDiv = document.createElement("div");
+	instrumentSelectorDiv.style.display = "inline-block";
 	let instrumentSelectors = [];
 	this._instrumentSelectors = instrumentSelectors;
 	for (let i = 0; i < 16; i++) {
@@ -414,14 +415,10 @@ class Piano {
 	    let noteOff = e => { this.noteOff(e.target); };
 	    key.addEventListener("mousedown", noteOn);
 	    /*
-	     * When the mouse button is released and the pointer leaves
+	     * when the mouse button is released and the pointer leaves
 	     * the element send a note off event
 	     */
-	    key.addEventListener("mouseout", e => {
-		if (e.target.classList.contains("piano-key-pressed")) {
-		    this.noteOff(e.target);
-		}
-	    });
+	    key.addEventListener("mouseout", noteOff);
 	    key.addEventListener("mouseover", e => {
 		if (e.buttons == 1) {
 		    e.preventDefault();
@@ -458,13 +455,41 @@ class Piano {
 	    }
 	});
 
-	let channels = document.createElement("select");
-	for (let i = 0; i < 16; i++) {
-	    let option = document.createElement("option");
-	    option.value = i;
-	    option.innerText = "channel " + i;
-	    channels.appendChild(option);
+	let channelLights = document.createElement("div");
+	channelLights.classList = "channel-lights";
+	for (let chan = 0; chan < 16; chan++) {
+	    let light = document.createElement("div");
+	    light.classList = "channel-light";
+	    if (chan == this.channel)
+		light.classList.add("channel-light-current");
+	    light.innerText = "" + chan;
+	    channelLights.appendChild(light);
+	    light.addEventListener("click", e => {
+		channelLights.childNodes.forEach(x => {
+		    x.classList.remove("channel-light-current");
+		});
+		light.classList.add("channel-light-current");
+		let event = new CustomEvent("ChannelChange", {
+		    detail: {
+			channel: chan
+		    }
+		});
+		document.dispatchEvent(event);
+
+		instrumentSelectors[this.channel].hide();
+		instrumentSelectors[chan].show();
+
+		this.channel = chan;
+	    });
 	}
+	document.addEventListener("NoteOn", e => {
+	    let chan = e.detail.channel;
+	    channelLights.children[chan].classList.add("channel-light-on");
+	});
+	document.addEventListener("NoteOff", e => {
+	    let chan = e.detail.channel;
+	    channelLights.children[chan].classList.remove("channel-light-on");
+	});
 
 	let btnGroup = document.createElement("div");
 	let shiftUpBtn = new ToolbarItem("caret-right");
@@ -479,8 +504,8 @@ class Piano {
 
 	toolbar.appendChild(btnGroup);
 
-	div.appendChild(channels);
-	div.appendChild(instrumentSelectorDiv);
+	div.appendChild(channelLights);
+	channelLights.appendChild(instrumentSelectorDiv);
 	div.appendChild(pianoKeys);
 	div.appendChild(toolbar);
 
@@ -509,21 +534,6 @@ class Piano {
 		    key.classList.remove("piano-key-touch-move");
 		}
 	    }
-	});
-
-	channels.addEventListener("change", e => {
-	    let chan = parseInt(e.target.value, 10);
-	    let event = new CustomEvent("ChannelChange", {
-		detail: {
-		    channel: chan
-		}
-	    });
-	    document.dispatchEvent(event);
-
-	    instrumentSelectors[this.channel].hide();
-	    instrumentSelectors[chan].show();
-
-	    this.channel = chan;
 	});
 
 	this.zoomAndShiftKeys(this.zoomLevel, this.shift);

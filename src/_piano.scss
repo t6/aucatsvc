@@ -7,6 +7,9 @@
 $piano-key-highlight-color: red !default;
 $piano-key-disabled-color: gray !default;
 $piano-key-height: 240px !default;
+$channel-light-size: 36px !default;
+$channel-light-border-size: 1px !default;
+$channel-light-margin: 2px !default;
 
 .piano {
     overflow: hidden;
@@ -88,4 +91,32 @@ $piano-key-height: 240px !default;
 
 .piano-key.piano-key-disabled {
     background-color: $piano-key-disabled-color;
+}
+
+.channel-lights {
+    display: inline-block;
+}
+
+.channel-light {
+    display: inline-block;
+    border-radius: 5px;
+    border: $channel-light-border-size solid $track-color;
+    background-color: $track-color;
+    margin: $channel-light-margin;
+    width: $channel-light-size - $channel-light-border-size;
+    height: $channel-light-size - $channel-light-border-size;
+
+    text-align: center;
+    line-height: $channel-light-size - $channel-light-border-size;
+    color: $text-color - #666;
+}
+
+.channel-light-on {
+    border: $channel-light-border-size solid $thumb-color;
+    background-color: $thumb-color;
+    color: $text-color;
+}
+
+.channel-light-current {
+    border: $channel-light-border-size solid green;
 }
