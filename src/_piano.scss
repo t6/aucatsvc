@@ -119,5 +119,6 @@ $channel-light-margin: 2px !default;
 }
 
 .channel-light-current {
+    color: $text-color;
     border: $channel-light-border-size solid green;
 }

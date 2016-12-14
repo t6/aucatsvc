@@ -259,18 +259,29 @@ class ToolbarItem {
 	e.id = "";
 	delete e.id;
 	this.element = e;
+
+	this._setupEventListeners();
     }
 
-    addClickEventListener(f) {
+    _dispatchEvent(e) {
+	let event = new CustomEvent("::click", {
+	    detail: {
+		event: e
+	    }
+	});
+	this.element.dispatchEvent(event);
+    }
+
+    _setupEventListeners() {
 	this.element.addEventListener("touchstart", e => {
 	    e.preventDefault();
 	    this.active = true;
 	});
 	this.element.addEventListener("touchend", e => {
-	    f(e);
+	    this._dispatchEvent(e);
 	    this.active = false;
 	});
-	this.element.addEventListener("click", f);
+	this.element.addEventListener("click", e => this._dispatchEvent(e));
     }
 
     get active() {
@@ -292,25 +303,26 @@ class ToolbarGroupItem extends ToolbarItem {
 	this.group = [];
     }
 
-    setGroup(group) {
-	this.group = group;
-    }
-
-    addClickEventListener(f) {
+    _setupEventListeners() {
 	this.element.addEventListener("touchstart", e => {
 	    e.preventDefault();
 	    this.group.forEach(x => x.active = false);
 	    this.active = true;
 	});
 	this.element.addEventListener("touchend", e => {
-	    f(e);
+	    this._dispatchEvent(e);
 	});
 	this.element.addEventListener("click", e => {
-	    f(e);
+	    this._dispatchEvent(e);
 	    this.group.forEach(x => x.active = false);
 	    this.active = true;
 	});
     }
+
+    setGroup(group) {
+	this.group = group;
+    }
+
 }
 
 class InstrumentSelector {
@@ -372,6 +384,43 @@ class InstrumentSelector {
     }
 }
 
+class ChannelLight {
+    constructor(parent, channel) {
+	let light = document.createElement("div");
+	this._element = light;
+	light.classList = "channel-light";
+	light.innerText = "" + channel;
+	light.addEventListener("click", e => {
+	    if (parent) {
+		parent.querySelectorAll(".channel-light-current").forEach(x => {
+		    x.classList.remove("channel-light-current");
+		});
+	    }
+	    light.classList.add("channel-light-current");
+	    let event = new CustomEvent("ChannelChange", {
+		detail: {
+		    channel: channel
+		}
+	    });
+	    parent.dispatchEvent(event);
+	});
+	document.addEventListener("NoteOn", e => {
+	    if (channel === e.detail.channel) {
+		light.classList.add("channel-light-on");
+	    }
+	});
+	document.addEventListener("NoteOff", e => {
+	    if (channel === e.detail.channel) {
+		light.classList.remove("channel-light-on");
+	    }
+	});
+    }
+
+    get element() {
+	return this._element;
+    }
+}
+
 class Piano {
     constructor(initialChannel) {
 	let toolbar = document.createElement("div");
@@ -387,6 +436,8 @@ class Piano {
 	this.zoomLevel = 7;
 	this.shift = 4 * 7;
 
+	this._channel = initialChannel === undefined ? 0 : initialChannel;
+
 	let instrumentSelectorDiv = document.createElement("div");
 	instrumentSelectorDiv.style.display = "inline-block";
 	let instrumentSelectors = [];
@@ -398,8 +449,7 @@ class Piano {
 	    instrumentSelectors.push(selector);
 	}
 	instrumentSelectors[0].show();
-
-	this.channel = initialChannel === undefined ? 0 : initialChannel;
+	this.channel = this._channel;
 
 	for (let i = 0; i < 128; i++) {
 	    let key = document.createElement("div");
@@ -458,39 +508,12 @@ class Piano {
 	let channelLights = document.createElement("div");
 	channelLights.classList = "channel-lights";
 	for (let chan = 0; chan < 16; chan++) {
-	    let light = document.createElement("div");
-	    light.classList = "channel-light";
+	    let light = new ChannelLight(this._element, chan);
+	    channelLights.appendChild(light.element);
 	    if (chan === this.channel) {
-		light.classList.add("channel-light-current");
+		light.element.classList.add("channel-light-current");
 	    }
-	    light.innerText = "" + chan;
-	    channelLights.appendChild(light);
-	    light.addEventListener("click", e => {
-		channelLights.childNodes.forEach(x => {
-		    x.classList.remove("channel-light-current");
-		});
-		light.classList.add("channel-light-current");
-		let event = new CustomEvent("ChannelChange", {
-		    detail: {
-			channel: chan
-		    }
-		});
-		document.dispatchEvent(event);
-
-		instrumentSelectors[this.channel].hide();
-		instrumentSelectors[chan].show();
-
-		this.channel = chan;
-	    });
 	}
-	document.addEventListener("NoteOn", e => {
-	    let chan = e.detail.channel;
-	    channelLights.children[chan].classList.add("channel-light-on");
-	});
-	document.addEventListener("NoteOff", e => {
-	    let chan = e.detail.channel;
-	    channelLights.children[chan].classList.remove("channel-light-on");
-	});
 
 	let btnGroup = document.createElement("div");
 	let shiftUpBtn = new ToolbarItem("caret-right");
@@ -510,11 +533,14 @@ class Piano {
 	div.appendChild(pianoKeys);
 	div.appendChild(toolbar);
 
-	shiftUpBtn.addClickEventListener(e => this.notesUp());
-	shiftDownBtn.addClickEventListener(e => this.notesDown());
-	zoomInBtn.addClickEventListener(e => this.zoomInKeys());
-	zoomOutBtn.addClickEventListener(e => this.zoomOutKeys());
+	shiftUpBtn.element.addEventListener("::click", e => this.notesUp());
+	shiftDownBtn.element.addEventListener("::click", e => this.notesDown());
+	zoomInBtn.element.addEventListener("::click", e => this.zoomInKeys());
+	zoomOutBtn.element.addEventListener("::click", e => this.zoomOutKeys());
 
+	this._element.addEventListener("ChannelChange", e => {
+	    this.channel = e.detail.channel;
+	});
 	document.addEventListener("NoteOn", e => {
 	    if (this.channel === e.detail.channel) {
 		let note = e.detail.note;
@@ -541,11 +567,13 @@ class Piano {
     }
 
     set channel(val) {
-	this._channel = val;
+	this._instrumentSelectors[this._channel].hide();
+	this._instrumentSelectors[val].show();
 	this._pianoKeys.querySelectorAll(".piano-key-pressed").forEach(x => {
 	    x.classList.remove("piano-key-pressed");
 	    x.classList.remove("piano-key-highlight");
 	});
+	this._channel = val;
     }
 
     get channel() {
@@ -666,7 +694,7 @@ class VolumeControls {
 	toolbar.appendChild(muteButton.element);
 	toolbar.appendChild(maxButton.element);
 
-	muteButton.addClickEventListener(e => {
+	muteButton.element.addEventListener("::click", e => {
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
 		    detail: {
@@ -677,7 +705,7 @@ class VolumeControls {
 		document.dispatchEvent(event);
 	    }
 	});
-	maxButton.addClickEventListener(e => {
+	maxButton.element.addEventListener("::click", e => {
 	    for (let slot = -1; slot < 8; slot++) {
 		let event = new CustomEvent("VolumeChangeRequest", {
 		    detail: {
@@ -810,11 +838,11 @@ class App {
 	piano.hide();
 	volumeBtn.active = true;
 
-	pianoBtn.addClickEventListener(e => {
+	pianoBtn.element.addEventListener("::click", e => {
 	    volumeCtls.hide();
 	    piano.show();
 	});
-	volumeBtn.addClickEventListener(e => {
+	volumeBtn.element.addEventListener("::click", e => {
 	    volumeCtls.show();
 	    piano.hide();
 	});
@@ -929,7 +957,7 @@ class MIDIProcessor {
 	}
     }
 
-    onMIDIEvent(data) { // jshint unused: false
+    onMIDIEvent(data) {
     }
 
     static volumeChangeMsg(slot, vol) {
