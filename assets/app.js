@@ -17,10 +17,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+// jshint esversion: 6, browser: true, undef: true, unused: vars
+// jshint curly: true, eqeqeq: true, latedef: true, varstmt: true, loopfunc: true
+
 // This byte stream contains 3 MIDI messages, one CTL and two SysEx
 // messages.  Passing it to MIDIProcessor.process should trigger
 // onMIDIEvent 3 times.
-let testmsg = new Uint8Array([182, 7, 127, 240, 125, 0, 35, 2, 247, 240, 125, 127, 35, 1, 1, 0, 112, 117, 108, 115, 101, 97, 117, 49, 0, 0, 247]);
+// const testmsg = new Uint8Array([182, 7, 127, 240, 125, 0, 35, 2, 247, 240, 125, 127, 35, 1, 1, 0, 112, 117, 108, 115, 101, 97, 117, 49, 0, 0, 247]);
 
 const INSTRUMENTS = [
     ['Piano', [
@@ -188,16 +191,16 @@ const INSTRUMENTS = [
 const AUCATSVC_CONTROL = 1;
 const AUCATSVC_MIDI = 2;
 
-const SYSEX_MTC = 0x01;
-const SYSEX_MTC_FULL = 0x01;
+// const SYSEX_MTC = 0x01;
+// const SYSEX_MTC_FULL = 0x01;
 const SYSEX_CONTROL = 0x04;
 const SYSEX_MASTER = 0x01;
-const SYSEX_MMC = 0x06;
-const SYSEX_MMC_STOP = 0x01;
-const SYSEX_MMC_START = 0x02;
-const SYSEX_MMC_LOC = 0x44;
-const SYSEX_MMC_LOC_LEN = 0x06;
-const SYSEX_MMC_LOC_CMD = 0x01;
+// const SYSEX_MMC = 0x06;
+// const SYSEX_MMC_STOP = 0x01;
+// const SYSEX_MMC_START = 0x02;
+// const SYSEX_MMC_LOC = 0x44;
+// const SYSEX_MMC_LOC_LEN = 0x06;
+// const SYSEX_MMC_LOC_CMD = 0x01;
 
 const SYSEX_DEV_ANY = 0x7f;
 
@@ -206,47 +209,44 @@ const SYSEX_TYPE_EDU = 0x7d;
 const SYSEX_AUCAT = 0x23;
 const SYSEX_AUCAT_SLOTDESC = 0x01;
 const SYSEX_AUCAT_DUMPREQ = 0x02;
-const SYSEX_AUCAT_DUMPEND = 0x03;
+// const SYSEX_AUCAT_DUMPEND = 0x03;
 
 const SYSEX_START = 0xf0;
 const MIDI_QFRAME = 0xf1;
 const SYSEX_STOP = 0xf7;
-const MIDI_TIC = 0xf8;
-const MIDI_START = 0xfa;
-const MIDI_STOP = 0xfc;
-const MIDI_ACK = 0xfe;
+// const MIDI_TIC = 0xf8;
+// const MIDI_START = 0xfa;
+// const MIDI_STOP = 0xfc;
+// const MIDI_ACK = 0xfe;
 const MIDI_CTL = 0xb0;
 const MIDI_CTLVOL = 0x07;
 
-const MTC_FPS_24 = 0;
-const MTC_FPS_25 = 1;
-const MTC_FPS_30 = 3;
-const MTC_FULL_LEN = 10; // size of MTC ``full frame'' sysex
+// const MTC_FPS_24 = 0;
+// const MTC_FPS_25 = 1;
+// const MTC_FPS_30 = 3;
+// const MTC_FULL_LEN = 10; // size of MTC ``full frame'' sysex
 
-const EV_NOFF_DEFAULTVEL = 100; // default note-off velocity
-
-const EV_NPAT = 16;
-const EV_NULL = 0; // "null" or end-of-track
-const EV_TEMPO = 0x2; // tempo change
-const EV_TIMESIG = 0x3; // time signature change
-const EV_NRPN = 0x4; // NRPN + data entry
-const EV_RPN = 0x5; // RPN + data entry
-const EV_XCTL = 0x6; // 14bit controller
-const EV_XPC = 0x7; // prog change + bank select
+// const EV_NPAT = 16;
+// const EV_NULL = 0; // "null" or end-of-track
+// const EV_TEMPO = 0x2; // tempo change
+// const EV_TIMESIG = 0x3; // time signature change
+// const EV_NRPN = 0x4; // NRPN + data entry
+// const EV_RPN = 0x5; // RPN + data entry
+// const EV_XCTL = 0x6; // 14bit controller
+// const EV_XPC = 0x7; // prog change + bank select
 const EV_NOFF = 0x8; // MIDI note off
 const EV_NON = 0x9; // MIDI note on
-const EV_KAT = 0xa; // MIDI key after-toutch
+// const EV_KAT = 0xa; // MIDI key after-toutch
 const EV_CTL = 0xb; // MIDI controller
 const EV_PC = 0xc; // MIDI prog. change
-const EV_CAT = 0xd; // MIDI channel aftertouch
+// const EV_CAT = 0xd; // MIDI channel aftertouch
 const EV_BEND = 0xe; // MIDI pitch bend
-const EV_PAT0 = 0x10; // user sysex pattern
-const EV_NUMCMD = EV_PAT0 + EV_NPAT;
+// const EV_PAT0 = 0x10; // user sysex pattern
+// const EV_NUMCMD = EV_PAT0 + EV_NPAT;
 
 const MASTER = -1;
 
 function logError(msg) {
-    console.log(msg);
     document.querySelectorAll(".error-message").forEach(e => {
 	e.innerText = msg;
     });
@@ -338,7 +338,9 @@ class InstrumentSelector {
 
 	select.addEventListener("change", e => {
 	    let prog = e.target.value;
-	    if (prog < 0) return;
+	    if (prog < 0) {
+		return;
+	    }
 	    let event = new CustomEvent("ProgramChangeRequest", {
 		detail: {
 		    channel: this.channel,
@@ -351,7 +353,7 @@ class InstrumentSelector {
 	div.appendChild(select);
 
 	document.addEventListener("ProgramChange", e => {
-	    if (e.detail.channel == this.channel) {
+	    if (e.detail.channel === this.channel) {
 		select.value = e.detail.instrument;
 	    }
 	});
@@ -399,9 +401,7 @@ class Piano {
 
 	this.channel = initialChannel === undefined ? 0 : initialChannel;
 
-	// Create more keys than we have.  These look better than
-	// empty space when the keyboard was shifted too much.
-	for (let i = 0; i < 1024; i++) {
+	for (let i = 0; i < 128; i++) {
 	    let key = document.createElement("div");
 	    key.classList = this.keyClass(i);
 	    key.classList.add("note-" + i);
@@ -420,7 +420,7 @@ class Piano {
 	     */
 	    key.addEventListener("mouseout", noteOff);
 	    key.addEventListener("mouseover", e => {
-		if (e.buttons == 1) {
+		if (e.buttons === 1) {
 		    e.preventDefault();
 		    this.noteOn(key);
 		}
@@ -439,7 +439,7 @@ class Piano {
 	    if (e.touches.length === 1) {
 		let key = document.elementFromPoint(
 		    e.touches[0].clientX, e.touches[0].clientY);
-		if (key && key.parentElement == pianoKeys &&
+		if (key && key.parentElement === pianoKeys &&
 		    key.classList.contains("piano-key") &&
 		    !key.classList.contains("piano-key-pressed")) {
 		    pianoKeys.querySelectorAll(".piano-key-pressed").forEach(
@@ -460,8 +460,9 @@ class Piano {
 	for (let chan = 0; chan < 16; chan++) {
 	    let light = document.createElement("div");
 	    light.classList = "channel-light";
-	    if (chan == this.channel)
+	    if (chan === this.channel) {
 		light.classList.add("channel-light-current");
+	    }
 	    light.innerText = "" + chan;
 	    channelLights.appendChild(light);
 	    light.addEventListener("click", e => {
@@ -515,7 +516,7 @@ class Piano {
 	zoomOutBtn.addClickEventListener(e => this.zoomOutKeys());
 
 	document.addEventListener("NoteOn", e => {
-	    if (this.channel == e.detail.channel) {
+	    if (this.channel === e.detail.channel) {
 		let note = e.detail.note;
 		let key = pianoKeys.querySelector(".note-" + note);
 		if (key) {
@@ -525,7 +526,7 @@ class Piano {
 	    }
 	});
 	document.addEventListener("NoteOff", e => {
-	    if (this.channel == e.detail.channel) {
+	    if (this.channel === e.detail.channel) {
 		let note = e.detail.note;
 		let key = pianoKeys.querySelector(".note-" + note);
 		if (key) {
@@ -552,7 +553,9 @@ class Piano {
     }
 
     noteOn(key) {
-	if (key.note > 127) return;
+	if (key.note > 127) {
+	    return;
+	}
 	let event = new CustomEvent("NoteOnRequest", {
 	    detail: {
 		channel: this.channel,
@@ -564,7 +567,9 @@ class Piano {
     }
 
     noteOff(key) {
-	if (key.note > 127) return;
+	if (key.note > 127) {
+	    return;
+	}
 	let event = new CustomEvent("NoteOffRequest", {
 	    detail: {
 		channel: this.channel,
@@ -578,10 +583,11 @@ class Piano {
     zoomAndShiftKeys(level, shift) {
 	let levels = [0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75,
 		      1, 1.33, 1.5, 1.67, 1.75, 2];
-	if (shift < 0)
+	if (shift < 0) {
 	    shift = 0;
-	else if (shift > 70)
+	} else if (shift > 70) {
 	    shift = 70;
+	}
 	if (level >= levels.length) {
 	    level = levels.length - 1;
 	} else if (level < 0) {
@@ -614,11 +620,12 @@ class Piano {
     }
 
     keyClass(k) {
-	var n = {
+	let n = {
 	    1: 1, 3: 3, 6: 1, 8: 2, 10: 3
 	}[(k % 12) + (k < 0 ? 12 : 0)];
-	if (n !== undefined)
+	if (n !== undefined) {
 	    return "piano-key piano-key-black piano-key-black" + n;
+	}
 	return "piano-key";
     }
 
@@ -683,10 +690,10 @@ class VolumeControls {
 	});
 
 	document.addEventListener("VolumeChanged", e => {
-	    this.onVolumeChange(e.detail.slot, e.detail.volume)
+	    this.onVolumeChange(e.detail.slot, e.detail.volume);
 	});
 	document.addEventListener("SlotDescription", e => {
-	    this.onSlotDescription(e.detail.slot, e.detail.description)
+	    this.onSlotDescription(e.detail.slot, e.detail.description);
 	});
     }
 
@@ -695,7 +702,7 @@ class VolumeControls {
 	let label = document.createElement("label");
 	let input = document.createElement("input");
 	let name;
-	if (slot == MASTER) {
+	if (slot === MASTER) {
 	    name = "master";
 	} else {
 	    name = "slot" + slot;
@@ -746,7 +753,8 @@ class VolumeControls {
     }
 
     getSlotElement(slot, child) {
-	if (slot == MASTER) {
+	let name;
+	if (slot === MASTER) {
 	    name = "master";
 	} else {
 	    name = "slot" + slot;
@@ -850,12 +858,12 @@ class MIDIProcessor {
 		this.istatus = data;
 		this.icount = 0;
 
-		if (data == SYSEX_START) {
+		if (data === SYSEX_START) {
 		    if (this.isysex.length > 0) {
 			// abort sysex
 		    }
 		    this.isysex = [data];
-		} else if (data == SYSEX_STOP) {
+		} else if (data === SYSEX_STOP) {
 		    if (this.isysex.length > 0) {
 			this.isysex.push(data);
 			this.onMIDIEvent(this.isysex);
@@ -872,34 +880,33 @@ class MIDIProcessor {
 		this.idata[this.icount] = data;
 		this.icount++;
 
-		if (this.icount == this.eventLength(this.istatus)) {
+		if (this.icount === this.eventLength(this.istatus)) {
 		    this.icount = 0;
 
 		    let cmd = (this.istatus >>> 4) >>> 0;
-		    let dev = 0; // unit
 		    let ch = this.istatus & 0x0f;
-		    if (cmd == EV_NON && this.idata[1] != 0) {
+		    if (cmd === EV_NON && this.idata[1] !== 0) {
 			this.onMIDIEvent({
 			    cmd: cmd,
 			    ch: ch,
 			    note: this.idata[0],
 			    velocity: this.idata[1]
 			});
-		    } else if (cmd == EV_NON && this.idata[1] == 0) {
+		    } else if (cmd === EV_NON && this.idata[1] === 0) {
 			this.onMIDIEvent({
 			    cmd: EV_NOFF,
 			    ch: ch,
 			    note: this.idata[0],
 			    velocity: this.idata[1],
 			});
-		    } else if (cmd == EV_NOFF) {
+		    } else if (cmd === EV_NOFF) {
 			this.onMIDIEvent({
 			    cmd: cmd,
 			    ch: ch,
 			    note: this.idata[0],
 			    velocity: 0,
 			});
-		    } else if (cmd == EV_BEND) {
+		    } else if (cmd === EV_BEND) {
 			this.onMIDIEvent({
 			    cmd: cmd,
 			    ch: ch,
@@ -914,19 +921,19 @@ class MIDIProcessor {
 			});
 		    }
 		}
-	    } else if (this.istatus == SYSEX_START) {
+	    } else if (this.istatus === SYSEX_START) {
 		this.isysex.push(data);
-	    } else if (this.istatus == MIDI_QFRAME) {
+	    } else if (this.istatus === MIDI_QFRAME) {
 		this.istatus = 0;
 	    }
 	}
-    };
+    }
 
-    onMIDIEvent(data) {
+    onMIDIEvent(data) { // jshint unused: false
     }
 
     static volumeChangeMsg(slot, vol) {
-	if (slot == MASTER) {
+	if (slot === MASTER) {
 	    return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_RT,
 				   0, SYSEX_CONTROL, SYSEX_MASTER, 0, vol,
 				   SYSEX_STOP]);
@@ -967,17 +974,17 @@ class MIDIControlProcessor extends MIDIProcessor {
 	let volume = 0;
 	let slot = 0;
 
-	if (data.cmd == EV_CTL) {
+	if (data.cmd === EV_CTL) {
 	    slot = data.ch;
 	    volume = data.v1;
-	} else if (data.length == 18 &&
-		   data[0] == SYSEX_START &&
-		   data[1] == SYSEX_TYPE_EDU &&
-		   data[2] == SYSEX_DEV_ANY &&
-		   data[3] == SYSEX_AUCAT &&
-		   data[4] == SYSEX_AUCAT_SLOTDESC &&
-		   data[6] == 0x00 &&
-		   data[17] == SYSEX_STOP) {
+	} else if (data.length === 18 &&
+		   data[0] === SYSEX_START &&
+		   data[1] === SYSEX_TYPE_EDU &&
+		   data[2] === SYSEX_DEV_ANY &&
+		   data[3] === SYSEX_AUCAT &&
+		   data[4] === SYSEX_AUCAT_SLOTDESC &&
+		   data[6] === 0x00 &&
+		   data[17] === SYSEX_STOP) {
 	    let slot = data[5];
 	    let desc = data.slice(7, 16);
 	    // Remove trailing zero bytes (if any)
@@ -993,18 +1000,17 @@ class MIDIControlProcessor extends MIDIProcessor {
 	    });
 	    document.dispatchEvent(event);
 	    return;
-	} else if (data.length == 8 &&
-		   data[0] == SYSEX_START &&
-		   data[1] == SYSEX_TYPE_RT &&
-		   (data[2] == 0 || data[2] == SYSEX_DEV_ANY) &&
-		   data[3] == SYSEX_CONTROL &&
-		   data[4] == SYSEX_MASTER &&
-		   data[5] == 0 &&
-		   data[7] == SYSEX_STOP) {
+	} else if (data.length === 8 &&
+		   data[0] === SYSEX_START &&
+		   data[1] === SYSEX_TYPE_RT &&
+		   (data[2] === 0 || data[2] === SYSEX_DEV_ANY) &&
+		   data[3] === SYSEX_CONTROL &&
+		   data[4] === SYSEX_MASTER &&
+		   data[5] === 0 &&
+		   data[7] === SYSEX_STOP) {
 	    slot = MASTER;
 	    volume = data[6];
 	} else {
-	    //console.log("Unhandled message type:", data);
 	    return;
 	}
 
@@ -1020,12 +1026,11 @@ class MIDIControlProcessor extends MIDIProcessor {
 
 class MIDIEventProcessor extends MIDIProcessor {
     onMIDIEvent(data) {
-	console.log(data);
 	// if (data.cmd == EV_CTL) {
 	// slot = data.ch;
 	// volume = data.v1;
 	//}
-	if (data.cmd == EV_NON) {
+	if (data.cmd === EV_NON) {
 	    let event = new CustomEvent("NoteOn", {
 		detail: {
 		    channel: data.ch,
@@ -1034,7 +1039,7 @@ class MIDIEventProcessor extends MIDIProcessor {
 		}
 	    });
 	    document.dispatchEvent(event);
-	} else if (data.cmd == EV_NOFF) {
+	} else if (data.cmd === EV_NOFF) {
 	    let event = new CustomEvent("NoteOff", {
 		detail: {
 		    channel: data.ch,
@@ -1043,7 +1048,7 @@ class MIDIEventProcessor extends MIDIProcessor {
 		}
 	    });
 	    document.dispatchEvent(event);
-	} else if (data.cmd == EV_PC) {
+	} else if (data.cmd === EV_PC) {
 	    let event = new CustomEvent("ProgramChange", {
 		detail: {
 		    channel: data.ch,
@@ -1051,9 +1056,6 @@ class MIDIEventProcessor extends MIDIProcessor {
 		}
 	    });
 	    document.dispatchEvent(event);
-	} else {
-	    console.log("Unhandled message type:", data);
-	    return;
 	}
     }
 }
@@ -1077,12 +1079,12 @@ class Connection {
 	    };
 	    this.socket.onmessage = evt => {
 		let data = new Uint8Array(evt.data);
-		if (data[0] == AUCATSVC_CONTROL) {
+		if (data[0] === AUCATSVC_CONTROL) {
 		    let event = new CustomEvent("MIDIControlMessage", {
 			detail: data.slice(1)
 		    });
 		    document.dispatchEvent(event);
-		} else if (data[0] == AUCATSVC_MIDI) {
+		} else if (data[0] === AUCATSVC_MIDI) {
 		    let event = new CustomEvent("MIDIMessage", {
 			detail: data.slice(1)
 		    });
@@ -1114,10 +1116,10 @@ class Connection {
 	}
 	return false;
     }
-};
+}
 
 document.addEventListener("DOMContentLoaded", function() {
-    let protocol = location.protocol == "http:" ? "ws:" : "wss:";
+    let protocol = location.protocol === "http:" ? "ws:" : "wss:";
     let url = protocol + "//" + location.host + "/aucat";
     let conn = new Connection(url);
     let ctlmidi = new MIDIControlProcessor();

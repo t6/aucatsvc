@@ -18,9 +18,12 @@ aucatsvc.so: src/aucatsvc.c assets/app.css assets/app.js assets/index.html
 assets/app.css: ${SCSS_SRC}
 	${SASSC} -t compressed src/app.scss > assets/app.css
 
+lint: assets/app.js
+	@jshint --verbose --reporter unix $>
+
 watch: all
 	@${INOTIFYWAIT} -q -m -e close_write src assets | \
-		while read -r filename event; do ${MAKE} all || true; done
+		while read -r filename event; do ${MAKE} lint all || true; done
 
 clean:
 	rm -f assets/app.css

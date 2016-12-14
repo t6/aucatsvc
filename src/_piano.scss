@@ -99,6 +99,7 @@ $channel-light-margin: 2px !default;
 
 .channel-light {
     display: inline-block;
+    cursor: pointer;
     border-radius: 5px;
     border: $channel-light-border-size solid $track-color;
     background-color: $track-color;
