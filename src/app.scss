@@ -30,16 +30,29 @@ body {
     padding: 1em 1em 1em 0em;
 }
 
-.volume-control label {
+.instrument-selector {
+    display: flex;
+    flex-direction: row;
+    padding: 1em 0em 0em 0em;
+}
+
+.volume-control label, .instrument-selector label {
     flex: 9em;
     line-height: $thumb-height / 2;
 }
 
-.volume-control input[type=range] {
+.volume-control input[type=range], .instrument-selector select {
     border: none;
     padding: 0;
     margin: 0;
     flex: auto;
+    width: 100%;
+}
+
+.instrument-selector select {
+    color: $button-text-color;
+    background-color: $track-color;
+    border: 1px solid $button-border-color;
 }
 
 .button-group {

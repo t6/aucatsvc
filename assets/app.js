@@ -298,19 +298,24 @@ class ToolbarItem {
 	} else {
 	    this.element.classList.remove("toolbar-icon-active");
 	}
+	this._onSetActive(value);
     }
+
+    _onSetActive(value) {}
 }
 
 class ToolbarGroupItem extends ToolbarItem {
-    constructor(icon) {
+    constructor(icon, view) {
 	super(icon);
-	this.group = [];
+	this._group = [];
+	this._view = view;
+	view.hide();
     }
 
     _setupEventListeners() {
 	this.element.addEventListener("touchstart", e => {
 	    e.preventDefault();
-	    this.group.forEach(x => x.active = false);
+	    this._group.forEach(x => x.active = false);
 	    this.active = true;
 	});
 	this.element.addEventListener("touchend", e => {
@@ -318,15 +323,23 @@ class ToolbarGroupItem extends ToolbarItem {
 	});
 	this.element.addEventListener("click", e => {
 	    this._dispatchEvent(e);
-	    this.group.forEach(x => x.active = false);
+	    this._group.forEach(x => x.active = false);
 	    this.active = true;
 	});
     }
 
-    setGroup(group) {
-	this.group = group;
+    _onSetActive(val) {
+	if (val) {
+	    this._group.forEach(x => x._view.hide());
+	    this._view.show();
+	} else {
+	    this._view.hide();
+	}
     }
 
+    setGroup(group) {
+	this._group = group;
+    }
 }
 
 class InstrumentSelector {
@@ -335,6 +348,11 @@ class InstrumentSelector {
 	this._element = div;
 	this.channel = channel;
 
+	div.classList = "instrument-selector channel" + channel;
+
+	let label = document.createElement("label");
+	label.htmlFor = "channel" + channel;
+	label.appendChild(document.createTextNode("Channel " + channel));
 	let select = document.createElement("select");
 	let option = document.createElement("option");
 	option.value = -1;
@@ -366,6 +384,7 @@ class InstrumentSelector {
 	    document.dispatchEvent(event);
 	});
 
+	div.appendChild(label);
 	div.appendChild(select);
 
 	document.addEventListener("ProgramChange", e => {
@@ -425,6 +444,43 @@ class ChannelLight {
     }
 }
 
+class Settings {
+    constructor() {
+	let toolbar = document.createElement("div");
+	toolbar.style.display = "inline-block";
+	this._toolbar = toolbar;
+
+	let div = document.createElement("div");
+	div.classList = "instrument-selectors";
+	this._element = div;
+	let instrumentSelectors = [];
+	this._instrumentSelectors = instrumentSelectors;
+	for (let i = 0; i < 16; i++) {
+	    let selector = new InstrumentSelector(i);
+	    div.appendChild(selector.element);
+	    instrumentSelectors.push(selector);
+	}
+    }
+
+    get element() {
+	return this._element;
+    }
+
+    get toolbar() {
+	return this._toolbar;
+    }
+
+    hide() {
+	this.element.style.display = "none";
+	this.toolbar.style.display = "none";
+    }
+
+    show() {
+	this.element.style.display = "block";
+	this.toolbar.style.display = "inline-block";
+    }
+}
+
 class Piano {
     constructor(initialChannel) {
 	let toolbar = document.createElement("div");
@@ -441,18 +497,6 @@ class Piano {
 	this.shift = 4 * 7;
 
 	this._channel = initialChannel === undefined ? 0 : initialChannel;
-
-	let instrumentSelectorDiv = document.createElement("div");
-	instrumentSelectorDiv.style.display = "inline-block";
-	let instrumentSelectors = [];
-	this._instrumentSelectors = instrumentSelectors;
-	for (let i = 0; i < 16; i++) {
-	    let selector = new InstrumentSelector(i);
-	    instrumentSelectorDiv.appendChild(selector.element);
-	    selector.hide();
-	    instrumentSelectors.push(selector);
-	}
-	instrumentSelectors[0].show();
 	this.channel = this._channel;
 
 	for (let i = 0; i < 128; i++) {
@@ -533,7 +577,6 @@ class Piano {
 	toolbar.appendChild(btnGroup);
 
 	div.appendChild(channelLights);
-	channelLights.appendChild(instrumentSelectorDiv);
 	div.appendChild(pianoKeys);
 	div.appendChild(toolbar);
 
@@ -571,8 +614,6 @@ class Piano {
     }
 
     set channel(val) {
-	this._instrumentSelectors[this._channel].hide();
-	this._instrumentSelectors[val].show();
 	this._pianoKeys.querySelectorAll(".piano-key-pressed").forEach(x => {
 	    x.classList.remove("piano-key-pressed");
 	    x.classList.remove("piano-key-highlight");
@@ -818,19 +859,24 @@ class App {
 	toolbar.classList = "toolbar";
 	content.appendChild(toolbar);
 
-	let volumeBtn = new ToolbarGroupItem("bullhorn");
-	let pianoBtn = new ToolbarGroupItem("music");
-	let itemGroup = [volumeBtn, pianoBtn];
-	itemGroup.forEach(x => x.setGroup(itemGroup));
-
 	let volumeCtls = new VolumeControls();
 	let piano = new Piano(0);
+	let settings = new Settings();
+
+	let volumeBtn = new ToolbarGroupItem("bullhorn", volumeCtls);
+	let pianoBtn = new ToolbarGroupItem("music", piano);
+	let settingsBtn = new ToolbarGroupItem("cog", settings);
+	let itemGroup = [volumeBtn, settingsBtn, pianoBtn];
+	itemGroup.forEach(x => x.setGroup(itemGroup));
 
 	toolbar.appendChild(volumeBtn.element);
 	toolbar.appendChild(pianoBtn.element);
+	toolbar.appendChild(settingsBtn.element);
 	// TODO: separator
 	content.appendChild(volumeCtls.element);
 	toolbar.appendChild(volumeCtls.toolbar);
+	content.appendChild(settings.element);
+	toolbar.appendChild(settings.toolbar);
 	content.appendChild(piano.element);
 	toolbar.appendChild(piano.toolbar);
 
@@ -838,18 +884,7 @@ class App {
 	err.classList = "error-message";
 	toolbar.appendChild(err);
 
-	volumeCtls.show();
-	piano.hide();
 	volumeBtn.active = true;
-
-	pianoBtn.element.addEventListener("::click", e => {
-	    volumeCtls.hide();
-	    piano.show();
-	});
-	volumeBtn.element.addEventListener("::click", e => {
-	    volumeCtls.show();
-	    piano.hide();
-	});
     }
 
     get element() {
