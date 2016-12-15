@@ -25,6 +25,10 @@
 // onMIDIEvent 3 times.
 // const testmsg = new Uint8Array([182, 7, 127, 240, 125, 0, 35, 2, 247, 240, 125, 127, 35, 1, 1, 0, 112, 117, 108, 115, 101, 97, 117, 49, 0, 0, 247]);
 
+/* Slot descriptions are composed of lower case letters and
+ * numbers i.e. a-z0-9 */
+const SLOT_DESCRIPTION_DICT = {"48": "0", "49": "1", "50": "2", "51": "3", "52": "4", "53": "5", "54": "6", "55": "7", "56": "8", "57": "9", "97": "a", "98": "b", "99": "c", "100": "d", "101": "e", "102": "f", "103": "g", "104": "h", "105": "i", "106": "j", "107": "k", "108": "l", "109": "m", "110": "n", "111": "o", "112": "p", "113": "q", "114": "r", "115": "s", "116": "t", "117": "u", "118": "v", "119": "w", "120": "x", "121": "y", "122": "z"};
+
 const INSTRUMENTS = [
     ['Piano', [
 	[0, 'Acoustic Grand Piano'],
@@ -853,14 +857,12 @@ class App {
     }
 }
 
-
 class MIDIProcessor {
     constructor() {
 	this.istatus = 0;
 	this.idata = [0, 0, 0];
 	this.icount = 0;
 	this.isysex = [];
-	this.decoder = new TextDecoder("ascii");
     }
 
     eventLength(status) {
@@ -1023,7 +1025,7 @@ class MIDIControlProcessor extends MIDIProcessor {
 	    let event = new CustomEvent("SlotDescription", {
 		detail: {
 		    slot: slot,
-		    description: this.decoder.decode(new Uint8Array(desc))
+		    description: this.decodeSlotDescription(desc)
 		}
 	    });
 	    document.dispatchEvent(event);
@@ -1049,6 +1051,18 @@ class MIDIControlProcessor extends MIDIProcessor {
 	    }
 	});
 	document.dispatchEvent(event);
+    }
+
+    decodeSlotDescription(desc) {
+	/* In browsers that support TextDecoder, this could be replaced with:
+	 * new TextDecoder("ascii").decode(new Uint8Array(desc)) */
+	return desc.map(x => {
+	    if (x in SLOT_DESCRIPTION_DICT) {
+		return SLOT_DESCRIPTION_DICT[x];
+	    } else {
+		return "?";
+	    }
+	}).join("");
     }
 }
 
