@@ -256,13 +256,39 @@ function logError(msg) {
 	});
 }
 
-class ToolbarItem {
+class Widget {
+	constructor(element, toolbar) {
+		this._element = element;
+		this._toolbar = toolbar;
+	}
+
+	get element() {
+		return this._element;
+	}
+
+	get toolbar() {
+		return this._toolbar;
+	}
+
+	hide() {
+		this.element.style.display = "none";
+		this.toolbar.style.display = "none";
+	}
+
+	show() {
+		this.element.style.display = "block";
+		this.toolbar.style.display = "inline-block";
+	}
+}
+
+class ToolbarItem extends Widget {
 	constructor(icon) {
 		let e = document.getElementById("icon-" + icon).cloneNode(true);
 		e.classList = "toolbar-icon";
 		e.id = "";
 		delete e.id;
-		this.element = e;
+
+		super(e);
 
 		this._setupEventListeners();
 	}
@@ -342,10 +368,10 @@ class ToolbarGroupItem extends ToolbarItem {
 	}
 }
 
-class InstrumentSelector {
+class InstrumentSelector extends Widget {
 	constructor(channel) {
 		let div = document.createElement("div");
-		this._element = div;
+		super(div);
 		this.channel = channel;
 
 		div.classList = "instrument-selector channel" + channel;
@@ -393,24 +419,12 @@ class InstrumentSelector {
 			}
 		});
 	}
-
-	get element() {
-		return this._element;
-	}
-
-	hide() {
-		this.element.style.display = "none";
-	}
-
-	show() {
-		this.element.style.display = "inline-block";
-	}
 }
 
-class ChannelLight {
+class ChannelLight extends Widget {
 	constructor(parent, channel) {
 		let light = document.createElement("div");
-		this._element = light;
+		super(light);
 		light.classList = "channel-light";
 		light.innerText = "" + channel;
 		light.addEventListener("click", e => {
@@ -438,21 +452,16 @@ class ChannelLight {
 			}
 		});
 	}
-
-	get element() {
-		return this._element;
-	}
 }
 
-class Settings {
+class Settings extends Widget {
 	constructor() {
 		let toolbar = document.createElement("div");
-		toolbar.style.display = "inline-block";
-		this._toolbar = toolbar;
-
 		let div = document.createElement("div");
 		div.classList = "instrument-selectors";
-		this._element = div;
+
+		super(div, toolbar);
+
 		let instrumentSelectors = [];
 		this._instrumentSelectors = instrumentSelectors;
 		for (let i = 0; i < 16; i++) {
@@ -461,34 +470,15 @@ class Settings {
 			instrumentSelectors.push(selector);
 		}
 	}
-
-	get element() {
-		return this._element;
-	}
-
-	get toolbar() {
-		return this._toolbar;
-	}
-
-	hide() {
-		this.element.style.display = "none";
-		this.toolbar.style.display = "none";
-	}
-
-	show() {
-		this.element.style.display = "block";
-		this.toolbar.style.display = "inline-block";
-	}
 }
 
-class Piano {
+class Piano extends Widget {
 	constructor(initialChannel) {
 		let toolbar = document.createElement("div");
-		toolbar.style.display = "inline-block";
-		this._toolbar = toolbar;
 		let div = document.createElement("div");
+		super(div, toolbar);
+
 		div.classList = "piano";
-		this._element = div;
 
 		let pianoKeys = document.createElement("div");
 		pianoKeys.classList = "piano-keys";
@@ -585,7 +575,7 @@ class Piano {
 		zoomInBtn.element.addEventListener("::click", e => this.zoomInKeys());
 		zoomOutBtn.element.addEventListener("::click", e => this.zoomOutKeys());
 
-		this._element.addEventListener("ChannelChange", e => {
+		this.element.addEventListener("ChannelChange", e => {
 			this.channel = e.detail.channel;
 		});
 		document.addEventListener("NoteOn", e => {
@@ -701,32 +691,13 @@ class Piano {
 		}
 		return "piano-key";
 	}
-
-	get element() {
-		return this._element;
-	}
-
-	get toolbar() {
-		return this._toolbar;
-	}
-
-	hide() {
-		this.element.style.display = "none";
-		this.toolbar.style.display = "none";
-	}
-
-	show() {
-		this.element.style.display = "block";
-		this.toolbar.style.display = "inline-block";
-	}
 }
 
-class VolumeControls {
+class VolumeControls extends Widget {
 	constructor() {
-		let toolbar = document.createElement("div");
-		this._toolbar = toolbar;
 		let ctls = document.createElement("div");
-		this._element = ctls;
+		let toolbar = document.createElement("div");
+		super(ctls, toolbar);
 		ctls.classList = "volume-controls";
 
 		for (let slot = -1; slot < 8; slot++) {
@@ -807,24 +778,6 @@ class VolumeControls {
 		return div;
 	}
 
-	get element() {
-		return this._element;
-	}
-
-	get toolbar() {
-		return this._toolbar;
-	}
-
-	hide() {
-		this.element.style.display = "none";
-		this.toolbar.style.display = "none";
-	}
-
-	show() {
-		this.element.style.display = "block";
-		this.toolbar.style.display = "inline-block";
-	}
-
 	getSlotElement(slot, child) {
 		let name;
 		if (slot === MASTER) {
@@ -844,12 +797,11 @@ class VolumeControls {
 	}
 }
 
-class App {
+class App extends Widget {
 	constructor() {
 		let div = document.createElement("div");
 		div.classList = "app";
 		div.classList.add("sidebar-active");
-		this.div = div;
 
 		let content = document.createElement("div");
 		content.classList = "content";
@@ -858,6 +810,8 @@ class App {
 		let toolbar = document.createElement("div");
 		toolbar.classList = "toolbar";
 		content.appendChild(toolbar);
+
+		super(div, toolbar);
 
 		let volumeCtls = new VolumeControls();
 		let piano = new Piano(0);
@@ -885,10 +839,6 @@ class App {
 		toolbar.appendChild(err);
 
 		volumeBtn.active = true;
-	}
-
-	get element() {
-		return this.div;
 	}
 }
 
