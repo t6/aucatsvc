@@ -206,9 +206,8 @@ const SYSEX_MASTER = 0x01;
 // const SYSEX_MMC_LOC = 0x44;
 // const SYSEX_MMC_LOC_LEN = 0x06;
 // const SYSEX_MMC_LOC_CMD = 0x01;
-
 const SYSEX_DEV_ANY = 0x7f;
-
+const SYSEX_RESET = 0xff;
 const SYSEX_TYPE_RT = 0x7f;
 const SYSEX_TYPE_EDU = 0x7d;
 const SYSEX_AUCAT = 0x23;
@@ -419,6 +418,10 @@ class InstrumentSelector extends Widget {
 				select.value = e.detail.instrument;
 			}
 		});
+
+		document.addEventListener("ResetRequest", e => {
+			select.value = 0;
+		});
 	}
 }
 
@@ -463,6 +466,10 @@ class Settings extends Widget {
 
 		super(div, toolbar);
 
+		let resetBtn = new ToolbarItem("exclamation-triangle");
+
+		toolbar.appendChild(resetBtn.element);
+		
 		let instrumentSelectors = [];
 		this._instrumentSelectors = instrumentSelectors;
 		for (let i = 0; i < 16; i++) {
@@ -470,6 +477,11 @@ class Settings extends Widget {
 			div.appendChild(selector.element);
 			instrumentSelectors.push(selector);
 		}
+
+		resetBtn.element.addEventListener("::click", e => {
+			let event = new Event("ResetRequest");
+			document.dispatchEvent(event);
+		});
 	}
 }
 
@@ -638,7 +650,7 @@ class Piano extends Widget {
 			detail: {
 				channel: this.channel,
 				note: key.note,
-				velocity: 127
+				velocity: 0
 			}
 		});
 		document.dispatchEvent(event);
@@ -962,6 +974,10 @@ class MIDIProcessor {
 		return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_EDU, 0, SYSEX_AUCAT, SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
 	}
 
+	static resetMsg() {
+		return new Uint8Array([AUCATSVC_MIDI, SYSEX_START, SYSEX_TYPE_RT, SYSEX_DEV_ANY, SYSEX_RESET, SYSEX_STOP]);
+	}
+
 	static setControllerMsg(channel, type, value) {
 		return new Uint8Array([AUCATSVC_MIDI, channel, type, value]);
 	}
@@ -1100,34 +1116,42 @@ class Connection {
 		try {
 			this.socket = new WebSocket(this.url);
 			this.socket.binaryType = "arraybuffer";
-			this.socket.onopen = () => {
-				logError("");
-			};
-			this.socket.onmessage = evt => {
-				let data = new Uint8Array(evt.data);
-				if (data[0] === AUCATSVC_CONTROL) {
-					let event = new CustomEvent("MIDIControlMessage", {
-						detail: data.slice(1)
-					});
-					document.dispatchEvent(event);
-				} else if (data[0] === AUCATSVC_MIDI) {
-					let event = new CustomEvent("MIDIMessage", {
-						detail: data.slice(1)
-					});
-					document.dispatchEvent(event);
-				}
-			};
-			this.socket.onclose = () => {
-				this.socket = null;
-				setTimeout(() => this.open(), 1000);
-				logError("connection closed. trying to reconnect...");
-			};
-			this.socket.onerror = () => {
-				this.socket = null;
-				logError("an error occured");
-			};
+			this.socket.onopen = e => this._onOpen(e);
+			this.socket.onmessage = e => this._onMessage(e);
+			this.socket.onclose = e => this._onClose(e);
+			this.socket.onerror = e => this._onError(e);
 		} catch (e) {
 			logError(e);
+		}
+	}
+
+	_onOpen(e) {
+		logError("");
+	}
+
+	_onError(e) {
+		this.socket = null;
+		logError("an error occured");
+	}
+
+	_onClose(e) {
+		this.socket = null;
+		setTimeout(() => this.open(), 1000);
+		logError("connection closed. trying to reconnect...");
+	}
+
+	_onMessage(e) {
+		let data = new Uint8Array(e.data);
+		if (data[0] === AUCATSVC_CONTROL) {
+			let event = new CustomEvent("MIDIControlMessage", {
+				detail: data.slice(1)
+			});
+			document.dispatchEvent(event);
+		} else if (data[0] === AUCATSVC_MIDI) {
+			let event = new CustomEvent("MIDIMessage", {
+				detail: data.slice(1)
+			});
+			document.dispatchEvent(event);
 		}
 	}
 
@@ -1159,6 +1183,12 @@ document.addEventListener("DOMContentLoaded", function() {
 	document.addEventListener("MIDIControlMessage", (e) => {
 		ctlmidi.process(e.detail);
 	});
+	document.addEventListener("ResetRequest", (e) => {
+		let msg = MIDIProcessor.resetMsg();
+		if (!conn.send(msg)) {
+			logError("unable to reset");
+		}
+	});
 	document.addEventListener("VolumeChangeRequest", e => {
 		let msg = MIDIProcessor.volumeChangeMsg(
 			e.detail.slot, e.detail.volume);
@@ -1175,7 +1205,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 	document.addEventListener("NoteOffRequest", e => {
 		let msg = MIDIProcessor.noteOffMsg(
-			e.detail.channel, e.detail.note, e.detail.delay);
+			e.detail.channel, e.detail.note, e.detail.velocity);
 		if (!conn.send(msg)) {
 			logError("unable to turn off note");
 		}
