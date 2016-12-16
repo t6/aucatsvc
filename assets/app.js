@@ -31,166 +31,195 @@
 const SLOT_DESCRIPTION_DICT = {"48": "0", "49": "1", "50": "2", "51": "3", "52": "4", "53": "5", "54": "6", "55": "7", "56": "8", "57": "9", "97": "a", "98": "b", "99": "c", "100": "d", "101": "e", "102": "f", "103": "g", "104": "h", "105": "i", "106": "j", "107": "k", "108": "l", "109": "m", "110": "n", "111": "o", "112": "p", "113": "q", "114": "r", "115": "s", "116": "t", "117": "u", "118": "v", "119": "w", "120": "x", "121": "y", "122": "z"};
 
 const INSTRUMENTS = [
-	['Piano', [
-		[0, 'Acoustic Grand Piano'],
-		[1, 'Bright Acoustic Piano'],
-		[2, 'Electric Grand Piano'],
-		[3, 'Honky-tonk Piano'],
-		[4, 'Electric Piano 1'],
-		[5, 'Electric Piano 2'],
-		[6, 'Harpsichord'],
-		[7, 'Clavinet']
-	]],
-	['Chromatic Percussion', [
-		[8, 'Celesta'],
-		[9, 'Glockenspiel'],
-		[10, 'Music Box'],
-		[11, 'Vibraphone'],
-		[12, 'Marimba'],
-		[13, 'Xylophone'],
-		[14, 'Tubular Bells'],
-		[15, 'Dulcimer']
-	]],
-	['Organ', [
-		[16, 'Drawbar Organ'],
-		[17, 'Percussive Organ'],
-		[18, 'Rock Organ'],
-		[19, 'Church Organ'],
-		[20, 'Reed Organ'],
-		[21, 'Accordion'],
-		[22, 'Harmonica'],
-		[23, 'Tango Accordion']
-	]],
-	['Guitar', [
-		[24, 'Acoustic Guitar (nylon)'],
-		[25, 'Acoustic Guitar (steel)'],
-		[26, 'Electric Guitar (jazz)'],
-		[27, 'Electric Guitar (clean)'],
-		[28, 'Electric Guitar (muted)'],
-		[29, 'Overdriven Guitar'],
-		[30, 'Distortion Guitar'],
-		[31, 'Guitar Harmonics']
-	]],
-	['Bass', [
-		[32, 'Acoustic Bass'],
-		[33, 'Electric Bass (finger)'],
-		[34, 'Electric Bass (pick)'],
-		[35, 'Fretless Bass'],
-		[36, 'Slap Bass 1'],
-		[37, 'Slap Bass 2'],
-		[38, 'Synth Bass 1'],
-		[39, 'Synth Bass 2']
-	]],
-	['Strings', [
-		[40, 'Violin'],
-		[41, 'Viola'],
-		[42, 'Cello'],
-		[43, 'Contrabass'],
-		[44, 'Tremolo Strings'],
-		[45, 'Pizzicato Strings'],
-		[46, 'Orchestral Harp'],
-		[47, 'Timpani']
-	]],
-	['Ensemble', [
-		[48, 'String Ensemble 1'],
-		[49, 'String Ensemble 2'],
-		[50, 'Synth Strings 1'],
-		[51, 'Synth Strings 2'],
-		[52, 'Choir Aahs'],
-		[53, 'Voice Oohs'],
-		[54, 'Synth Choir'],
-		[55, 'Orchestra Hit']
-	]],
-	['Brass', [
-		[56, 'Trumpet'],
-		[57, 'Trombone'],
-		[58, 'Tuba'],
-		[59, 'Muted Trumpet'],
-		[60, 'French Horn'],
-		[61, 'Brass Section'],
-		[62, 'Synth Brass 1'],
-		[63, 'Synth Brass 2'],
-	]],
-	['Reed', [
-		[64, 'Soprano Sax'],
-		[65, 'Alto Sax'],
-		[66, 'Tenor Sax'],
-		[67, 'Baritone Sax'],
-		[68, 'Oboe'],
-		[69, 'English Horn'],
-		[70, 'Bassoon'],
-		[71, 'Clarinet']
-	]],
-	['Pipe', [
-		[72, 'Piccolo'],
-		[73, 'Flute'],
-		[74, 'Recorder'],
-		[75, 'Pan Flute'],
-		[76, 'Blown Bottle'],
-		[77, 'Shakuhachi'],
-		[78, 'Whistle'],
-		[79, 'Ocarina']
-	]],
-	['Synth Lead', [
-		[80, 'Lead 1 (square)'],
-		[81, 'Lead 2 (sawtooth)'],
-		[82, 'Lead 3 (calliope)'],
-		[83, 'Lead 4 (chiff)'],
-		[84, 'Lead 5 (charang)'],
-		[85, 'Lead 6 (voice)'],
-		[86, 'Lead 7 (fifths)'],
-		[87, 'Lead 8 (bass + lead)']
-	]],
-	['Synth Pad', [
-		[88, 'Pad 1 (new age)'],
-		[89, 'Pad 2 (warm)'],
-		[90, 'Pad 3 (polysynth)'],
-		[91, 'Pad 4 (choir)'],
-		[92, 'Pad 5 (bowed)'],
-		[93, 'Pad 6 (metallic)'],
-		[94, 'Pad 7 (halo)'],
-		[95, 'Pad 8 (sweep)']
-	]],
-	['Synth Effects', [
-		[96, 'FX 1 (rain)'],
-		[97, 'FX 2 (soundtrack)'],
-		[98, 'FX 3 (crystal)'],
-		[99, 'FX 4 (atmosphere)'],
-		[100, 'FX 5 (brightness)'],
-		[101, 'FX 6 (goblins)'],
-		[102, 'FX 7 (echoes)'],
-		[103, 'FX 8 (sci-fi)']
-	]],
-	['Ethnic', [
-		[104, 'Sitar'],
-		[105, 'Banjo'],
-		[106, 'Shamisen'],
-		[107, 'Koto'],
-		[108, 'Kalimba'],
-		[109, 'Bagpipe'],
-		[110, 'Fiddle'],
-		[111, 'Shanai']
-	]],
-	['Percussive', [
-		[112, 'Tinkle Bell'],
-		[113, 'Agogo'],
-		[114, 'Steel Drums'],
-		[115, 'Woodblock'],
-		[116, 'Taiko Drum'],
-		[117, 'Melodic Tom'],
-		[118, 'Synth Drum']
-	]],
-	['Sound effects', [
-		[119, 'Reverse Cymbal'],
-		[120, 'Guitar Fret Noise'],
-		[121, 'Breath Noise'],
-		[122, 'Seashore'],
-		[123, 'Bird Tweet'],
-		[124, 'Telephone Ring'],
-		[125, 'Helicopter'],
-		[126, 'Applause'],
-		[127, 'Gunshot']
-	]]
+	[0, 0, "Piano", "Acoustic Grand Piano"],
+	[0, 1, "Piano", "Bright Acoustic Piano"],
+	[0, 2, "Piano", "Electric Grand Piano"],
+	[0, 3, "Piano", "Honky-tonk Piano"],
+	[0, 4, "Piano", "Electric Piano 1"],
+	[0, 5, "Piano", "Electric Piano 2"],
+	[0, 6, "Piano", "Harpsichord"],
+	[0, 7, "Piano", "Clavinet"],
+	[0, 8, "Chromatic Percussion", "Celesta"],
+	[0, 9, "Chromatic Percussion", "Glockenspiel"],
+	[0, 10, "Chromatic Percussion", "Music Box"],
+	[0, 11, "Chromatic Percussion", "Vibraphone"],
+	[0, 12, "Chromatic Percussion", "Marimba"],
+	[0, 13, "Chromatic Percussion", "Xylophone"],
+	[0, 14, "Chromatic Percussion", "Tubular Bells"],
+	[0, 15, "Chromatic Percussion", "Dulcimer"],
+	[0, 16, "Organ", "Drawbar Organ"],
+	[0, 17, "Organ", "Percussive Organ"],
+	[0, 18, "Organ", "Rock Organ"],
+	[0, 19, "Organ", "Church Organ"],
+	[0, 20, "Organ", "Reed Organ"],
+	[0, 21, "Organ", "Accordion"],
+	[0, 22, "Organ", "Harmonica"],
+	[0, 23, "Organ", "Tango Accordion"],
+	[0, 24, "Guitar", "Acoustic Guitar (nylon)"],
+	[0, 25, "Guitar", "Acoustic Guitar (steel)"],
+	[0, 26, "Guitar", "Electric Guitar (jazz)"],
+	[0, 27, "Guitar", "Electric Guitar (clean)"],
+	[0, 28, "Guitar", "Electric Guitar (muted)"],
+	[0, 29, "Guitar", "Overdriven Guitar"],
+	[0, 30, "Guitar", "Distortion Guitar"],
+	[0, 31, "Guitar", "Guitar Harmonics"],
+	[0, 32, "Bass", "Acoustic Bass"],
+	[0, 33, "Bass", "Electric Bass (finger)"],
+	[0, 34, "Bass", "Electric Bass (pick)"],
+	[0, 35, "Bass", "Fretless Bass"],
+	[0, 36, "Bass", "Slap Bass 1"],
+	[0, 37, "Bass", "Slap Bass 2"],
+	[0, 38, "Bass", "Synth Bass 1"],
+	[0, 39, "Bass", "Synth Bass 2"],
+	[0, 40, "Strings", "Violin"],
+	[0, 41, "Strings", "Viola"],
+	[0, 42, "Strings", "Cello"],
+	[0, 43, "Strings", "Contrabass"],
+	[0, 44, "Strings", "Tremolo Strings"],
+	[0, 45, "Strings", "Pizzicato Strings"],
+	[0, 46, "Strings", "Orchestral Harp"],
+	[0, 47, "Strings", "Timpani"],
+	[0, 48, "Ensemble", "String Ensemble 1"],
+	[0, 49, "Ensemble", "String Ensemble 2"],
+	[0, 50, "Ensemble", "Synth Strings 1"],
+	[0, 51, "Ensemble", "Synth Strings 2"],
+	[0, 52, "Ensemble", "Choir Aahs"],
+	[0, 53, "Ensemble", "Voice Oohs"],
+	[0, 54, "Ensemble", "Synth Choir"],
+	[0, 55, "Ensemble", "Orchestra Hit"],
+	[0, 56, "Brass", "Trumpet"],
+	[0, 57, "Brass", "Trombone"],
+	[0, 58, "Brass", "Tuba"],
+	[0, 59, "Brass", "Muted Trumpet"],
+	[0, 60, "Brass", "French Horn"],
+	[0, 61, "Brass", "Brass Section"],
+	[0, 62, "Brass", "Synth Brass 1"],
+	[0, 63, "Brass", "Synth Brass 2"],
+	[0, 64, "Reed", "Soprano Sax"],
+	[0, 65, "Reed", "Alto Sax"],
+	[0, 66, "Reed", "Tenor Sax"],
+	[0, 67, "Reed", "Baritone Sax"],
+	[0, 68, "Reed", "Oboe"],
+	[0, 69, "Reed", "English Horn"],
+	[0, 70, "Reed", "Bassoon"],
+	[0, 71, "Reed", "Clarinet"],
+	[0, 72, "Pipe", "Piccolo"],
+	[0, 73, "Pipe", "Flute"],
+	[0, 74, "Pipe", "Recorder"],
+	[0, 75, "Pipe", "Pan Flute"],
+	[0, 76, "Pipe", "Blown Bottle"],
+	[0, 77, "Pipe", "Shakuhachi"],
+	[0, 78, "Pipe", "Whistle"],
+	[0, 79, "Pipe", "Ocarina"],
+	[0, 80, "Synth Lead", "Lead 1 (square)"],
+	[0, 81, "Synth Lead", "Lead 2 (sawtooth)"],
+	[0, 82, "Synth Lead", "Lead 3 (calliope)"],
+	[0, 83, "Synth Lead", "Lead 4 (chiff)"],
+	[0, 84, "Synth Lead", "Lead 5 (charang)"],
+	[0, 85, "Synth Lead", "Lead 6 (voice)"],
+	[0, 86, "Synth Lead", "Lead 7 (fifths)"],
+	[0, 87, "Synth Lead", "Lead 8 (bass + lead)"],
+	[0, 88, "Synth Pad", "Pad 1 (new age)"],
+	[0, 89, "Synth Pad", "Pad 2 (warm)"],
+	[0, 90, "Synth Pad", "Pad 3 (polysynth)"],
+	[0, 91, "Synth Pad", "Pad 4 (choir)"],
+	[0, 92, "Synth Pad", "Pad 5 (bowed)"],
+	[0, 93, "Synth Pad", "Pad 6 (metallic)"],
+	[0, 94, "Synth Pad", "Pad 7 (halo)"],
+	[0, 95, "Synth Pad", "Pad 8 (sweep)"],
+	[0, 96, "Synth Effects", "FX 1 (rain)"],
+	[0, 97, "Synth Effects", "FX 2 (soundtrack)"],
+	[0, 98, "Synth Effects", "FX 3 (crystal)"],
+	[0, 99, "Synth Effects", "FX 4 (atmosphere)"],
+	[0, 100, "Synth Effects", "FX 5 (brightness)"],
+	[0, 101, "Synth Effects", "FX 6 (goblins)"],
+	[0, 102, "Synth Effects", "FX 7 (echoes)"],
+	[0, 103, "Synth Effects", "FX 8 (sci-fi)"],
+	[0, 104, "Ethnic", "Sitar"],
+	[0, 105, "Ethnic", "Banjo"],
+	[0, 106, "Ethnic", "Shamisen"],
+	[0, 107, "Ethnic", "Koto"],
+	[0, 108, "Ethnic", "Kalimba"],
+	[0, 109, "Ethnic", "Bagpipe"],
+	[0, 110, "Ethnic", "Fiddle"],
+	[0, 111, "Ethnic", "Shanai"],
+	[0, 112, "Percussive", "Tinkle Bell"],
+	[0, 113, "Percussive", "Agogo"],
+	[0, 114, "Percussive", "Steel Drums"],
+	[0, 115, "Percussive", "Woodblock"],
+	[0, 116, "Percussive", "Taiko Drum"],
+	[0, 117, "Percussive", "Melodic Tom"],
+	[0, 118, "Percussive", "Synth Drum"],
+	[0, 119, "Sound effects", "Reverse Cymbal"],
+	[0, 120, "Sound effects", "Guitar Fret Noise"],
+	[0, 121, "Sound effects", "Breath Noise"],
+	[0, 122, "Sound effects", "Seashore"],
+	[0, 123, "Sound effects", "Bird Tweet"],
+	[0, 124, "Sound effects", "Telephone Ring"],
+	[0, 125, "Sound effects", "Helicopter"],
+	[0, 126, "Sound effects", "Applause"],
+	[0, 127, "Sound effects", "Gunshot"],
+	[8, 4, "", "Detuned EP 1"],
+	[8, 5, "", "Detuned EP 2"],
+	[8, 6, "", "Coupled Harpsichord"],
+	[8, 14, "", "Church Bell"],
+	[8, 16, "", "Detuned Organ 1"],
+	[8, 17, "", "Detuned Organ 2"],
+	[8, 19, "", "Church Organ 2"],
+	[8, 21, "", "Italian Accordion"],
+	[8, 24, "", "Ukulele"],
+	[8, 25, "", "12 String Guitar"],
+	[8, 26, "", "Hawaiian Guitar"],
+	[8, 28, "", "Funk Guitar"],
+	[8, 30, "", "Feedback Guitar"],
+	[8, 31, "", "Guitar Feedback"],
+	[8, 38, "", "Synth Bass 3"],
+	[8, 39, "", "Synth Bass 4"],
+	[8, 40, "", "Slow Violin"],
+	[8, 48, "", "Orchestral Pad"],
+	[8, 50, "", "Synth Strings 3"],
+	[8, 61, "", "Brass 2"],
+	[8, 62, "", "Synth Brass 3"],
+	[8, 63, "", "Synth Brass 4"],
+	[8, 80, "", "Sine Wave"],
+	[8, 107, "", "Taisho Koto"],
+	[8, 115, "", "Castanets"],
+	[8, 116, "", "Concert Bass Drum"],
+	[8, 117, "", "Melo Tom 2"],
+	[8, 118, "", "808 Tom"],
+	[9, 125, "", "Burst noise"],
+	[16, 25, "", "Mandolin"],
+	[128, 0, "Drum Kits", "Standard"],
+	[128, 1, "Drum Kits", "Standard 1"],
+	[128, 2, "Drum Kits", "Standard 2"],
+	[128, 3, "Drum Kits", "Standard 3"],
+	[128, 4, "Drum Kits", "Standard 4"],
+	[128, 5, "Drum Kits", "Standard 5"],
+	[128, 6, "Drum Kits", "Standard 6"],
+	[128, 7, "Drum Kits", "Standard 7"],
+	[128, 8, "Drum Kits", "Room"],
+	[128, 9, "Drum Kits", "Room 1"],
+	[128, 10, "Drum Kits", "Room 2"],
+	[128, 11, "Drum Kits", "Room 3"],
+	[128, 12, "Drum Kits", "Room 4"],
+	[128, 13, "Drum Kits", "Room 5"],
+	[128, 14, "Drum Kits", "Room 6"],
+	[128, 15, "Drum Kits", "Room 7"],
+	[128, 16, "Drum Kits", "Power"],
+	[128, 17, "Drum Kits", "Power 1"],
+	[128, 18, "Drum Kits", "Power 2"],
+	[128, 19, "Drum Kits", "Power 3"],
+	[128, 24, "Drum Kits", "Electronic"],
+	[128, 25, "Drum Kits", "TR-808"],
+	[128, 32, "Drum Kits", "Jazz"],
+	[128, 33, "Drum Kits", "Jazz 1"],
+	[128, 34, "Drum Kits", "Jazz 2"],
+	[128, 35, "Drum Kits", "Jazz 3"],
+	[128, 36, "Drum Kits", "Jazz 4"],
+	[128, 40, "Drum Kits", "Brush"],
+	[128, 41, "Drum Kits", "Brush 1"],
+	[128, 42, "Drum Kits", "Brush 2"],
+	[128, 48, "Drum Kits", "Orchestra Kit"]
 ];
 
 const AUCATSVC_CONTROL = 1;
@@ -237,7 +266,7 @@ const MIDI_CTLVOL = 0x07;
 // const EV_NRPN = 0x4; // NRPN + data entry
 // const EV_RPN = 0x5; // RPN + data entry
 // const EV_XCTL = 0x6; // 14bit controller
-// const EV_XPC = 0x7; // prog change + bank select
+const EV_XPC = 0x7; // prog change + bank select
 const EV_NOFF = 0x8; // MIDI note off
 const EV_NON = 0x9; // MIDI note on
 // const EV_KAT = 0xa; // MIDI key after-toutch
@@ -384,26 +413,24 @@ class InstrumentSelector extends Widget {
 		option.value = -1;
 		option.innerText = "--";
 		select.appendChild(option);
-		INSTRUMENTS.forEach(x => {
-			let [category, instruments] = x;
-			instruments.forEach(y => {
-				let [prog, name] = y;
-				let option = document.createElement("option");
-				option.value = prog;
-				option.innerText = "" + prog + " " + category + " - " + name;
-
-				select.appendChild(option);
-			});
+		INSTRUMENTS.forEach((x, i) => {
+			let [bank, prog, category, name] = x;
+			let option = document.createElement("option");
+			option.value = i;
+			option.innerText = "" + bank + " " + prog + " " + category + " - " + name;
+			select.appendChild(option);
 		});
 
 		select.addEventListener("change", e => {
-			let prog = e.target.value;
-			if (prog < 0) {
+			if (e.target.value < 0) {
 				return;
 			}
+			let [bank, prog] = INSTRUMENTS[e.target.value];
+			console.log(bank, prog);
 			let event = new CustomEvent("ProgramChangeRequest", {
 				detail: {
 					channel: this.channel,
+					bank: bank,
 					program: prog
 				}
 			});
@@ -973,7 +1000,8 @@ class MIDIProcessor {
 		return new Uint8Array([AUCATSVC_MIDI, channel, type, value]);
 	}
 
-	static programChangeMsg(channel, program) {
+	static programChangeMsg(channel, bank, program) {
+		return new Uint8Array([AUCATSVC_MIDI, MIDI_CTL + channel, 0x00, 0x7f, MIDI_CTL + channel, 0x20, 0x00, 0xc0 + channel, program]);
 		return new Uint8Array([AUCATSVC_MIDI, 0xc0 + channel, program]);
 	}
 
@@ -1089,6 +1117,8 @@ class MIDIEventProcessor extends MIDIProcessor {
 				}
 			});
 			document.dispatchEvent(event);
+		} else {
+			console.log(data);
 		}
 	}
 }
@@ -1203,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 	document.addEventListener("ProgramChangeRequest", e => {
 		let msg = MIDIProcessor.programChangeMsg(
-			e.detail.channel, e.detail.program);
+			e.detail.channel, e.detail.bank, e.detail.program);
 		if (!conn.send(msg)) {
 			logError("unable to change program");
 		}
