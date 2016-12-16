@@ -16,7 +16,7 @@ aucatsvc.so: src/aucatsvc.c assets/app.css assets/app.js assets/index.html
 	${KORE} build
 
 assets/app.css: ${SCSS_SRC}
-	${SASSC} -t compressed src/app.scss > assets/app.css
+	${SASSC} -t compressed src/app.scss assets/app.css
 
 lint: assets/app.js
 	@jshint --verbose --reporter unix $>

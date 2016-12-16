@@ -645,8 +645,7 @@ class Piano extends Widget {
 	}
 
 	zoomAndShiftKeys(level, shift) {
-		let levels = [0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75,
-			      1, 1.33, 1.5, 1.67, 1.75, 2];
+		let levels = [0.1, 0.15, 0.25, 0.33, 0.5, 0.67, 0.75, 1, 1.33, 1.5, 1.67, 1.75, 2];
 		if (shift < 0) {
 			shift = 0;
 		} else if (shift > 70) {
@@ -827,7 +826,9 @@ class App extends Widget {
 		toolbar.appendChild(volumeBtn.element);
 		toolbar.appendChild(pianoBtn.element);
 		toolbar.appendChild(settingsBtn.element);
-		// TODO: separator
+		let separator = document.createElement("div");
+		separator.classList = "toolbar-separator";
+		toolbar.appendChild(separator);
 		content.appendChild(volumeCtls.element);
 		toolbar.appendChild(volumeCtls.toolbar);
 		content.appendChild(settings.element);
@@ -950,9 +951,7 @@ class MIDIProcessor {
 
 	static volumeChangeMsg(slot, vol) {
 		if (slot === MASTER) {
-			return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_RT,
-					       0, SYSEX_CONTROL, SYSEX_MASTER, 0, vol,
-					       SYSEX_STOP]);
+			return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_RT, 0, SYSEX_CONTROL, SYSEX_MASTER, 0, vol, SYSEX_STOP]);
 		} else {
 			return new Uint8Array([
 				AUCATSVC_CONTROL, MIDI_CTL | slot, MIDI_CTLVOL, vol]);
@@ -960,8 +959,7 @@ class MIDIProcessor {
 	}
 
 	static dumprequest() {
-		return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_EDU, 0,
-				       SYSEX_AUCAT, SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
+		return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_EDU, 0, SYSEX_AUCAT, SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
 	}
 
 	static setControllerMsg(channel, type, value) {

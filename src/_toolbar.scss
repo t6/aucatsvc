@@ -12,7 +12,7 @@ div.toolbar div {
     width: $toolbar-icon-size - 10px;
     height: $toolbar-icon-size - 10px;
     padding: 5px;
-    background: $track-color;
+    background-color: $track-color;
     cursor: pointer;
     border-radius: 5px;
 
@@ -23,17 +23,28 @@ div.toolbar div {
     }
 
     &:hover {
-	background: $thumb-color;
+	background-color: $thumb-color;
     }
 
     margin-left: $toolbar-icon-size / 8;
 }
 
 .toolbar-icon-active {
-    background: $thumb-color;
+    background-color: $thumb-color;
 }
 
 .toolbar .error-message {
     margin-left: $toolbar-icon-size / 8;
     color: red;
+}
+
+div.toolbar-separator {
+    display: inline-block;
+    height: $toolbar-icon-size - 10px;
+    width: 5px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-left: $toolbar-icon-size / 8;
 }
