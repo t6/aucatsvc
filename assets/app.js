@@ -1,3 +1,4 @@
+/* -*- mode: js; js-indent-level: 8; tab-width: 8; indent-tabs-mode: t; -*- */
 /*
  * Copyright (c) 2016 Tobias Kortkamp <t@tobik.me>
  *

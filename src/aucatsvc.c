@@ -1,3 +1,4 @@
+/* -*- mode: c; c-default-style: bsd; indent-tabs-mode: t; -*- */
 /*
  * Copyright (c) 2016 Tobias Kortkamp <t@tobik.me>
  *
