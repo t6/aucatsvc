@@ -705,58 +705,16 @@ class Piano extends Widget {
 	}
 }
 
-class VolumeControls extends Widget {
-	constructor() {
-		let ctls = document.createElement("div");
-		let toolbar = document.createElement("div");
-		super(ctls, toolbar);
-		ctls.classList = "volume-controls";
-
-		for (let slot = -1; slot < 8; slot++) {
-			let ctl = this.makeVolumeControl(slot);
-			ctls.appendChild(ctl);
-		}
-
-		let muteButton = new ToolbarItem("volume-off");
-		let maxButton = new ToolbarItem("volume-up");
-		toolbar.appendChild(muteButton.element);
-		toolbar.appendChild(maxButton.element);
-
-		muteButton.element.addEventListener("::click", e => {
-			for (let slot = -1; slot < 8; slot++) {
-				let event = new CustomEvent("VolumeChangeRequest", {
-					detail: {
-						slot: slot,
-						volume: 0
-					}
-				});
-				document.dispatchEvent(event);
-			}
-		});
-		maxButton.element.addEventListener("::click", e => {
-			for (let slot = -1; slot < 8; slot++) {
-				let event = new CustomEvent("VolumeChangeRequest", {
-					detail: {
-						slot: slot,
-						volume: 127
-					}
-				});
-				document.dispatchEvent(event);
-			}
-		});
-
-		document.addEventListener("VolumeChanged", e => {
-			this.onVolumeChange(e.detail.slot, e.detail.volume);
-		});
-		document.addEventListener("SlotDescription", e => {
-			this.onSlotDescription(e.detail.slot, e.detail.description);
-		});
-	}
-
-	makeVolumeControl(slot) {
+class VolumeControl extends Widget {
+	constructor(slot) {
 		let div = document.createElement("div");
+		super(div);
+
 		let label = document.createElement("label");
 		let input = document.createElement("input");
+		this._label = label;
+		this._input = input;
+
 		let name;
 		if (slot === MASTER) {
 			name = "master";
@@ -787,25 +745,58 @@ class VolumeControls extends Widget {
 		div.appendChild(label);
 		div.appendChild(input);
 
-		return div;
+		document.addEventListener("VolumeChanged", e => {
+			if (e.detail.slot == slot) {
+				input.value = e.detail.volume;
+			}
+		});
+		document.addEventListener("SlotDescription", e => {
+			if (e.detail.slot == slot) {
+				label.innerText = e.detail.description;
+			}
+		});
 	}
+}
 
-	getSlotElement(slot, child) {
-		let name;
-		if (slot === MASTER) {
-			name = "master";
-		} else {
-			name = "slot" + slot;
+class VolumeControls extends Widget {
+	constructor() {
+		let ctls = document.createElement("div");
+		let toolbar = document.createElement("div");
+		super(ctls, toolbar);
+		ctls.classList = "volume-controls";
+
+		for (let slot = -1; slot < 8; slot++) {
+			let ctl = new VolumeControl(slot);
+			ctls.appendChild(ctl.element);
 		}
-		return this.element.querySelector("." + name + " > " + child);
-	}
 
-	onVolumeChange(slot, volume) {
-		this.getSlotElement(slot, "input").value = volume;
-	}
+		let muteButton = new ToolbarItem("volume-off");
+		let maxButton = new ToolbarItem("volume-up");
+		toolbar.appendChild(muteButton.element);
+		toolbar.appendChild(maxButton.element);
 
-	onSlotDescription(slot, desc) {
-		this.getSlotElement(slot, "label").innerText = desc;
+		muteButton.element.addEventListener("::click", e => {
+			for (let slot = -1; slot < 8; slot++) {
+				let event = new CustomEvent("VolumeChangeRequest", {
+					detail: {
+						slot: slot,
+						volume: 0
+					}
+				});
+				document.dispatchEvent(event);
+			}
+		});
+		maxButton.element.addEventListener("::click", e => {
+			for (let slot = -1; slot < 8; slot++) {
+				let event = new CustomEvent("VolumeChangeRequest", {
+					detail: {
+						slot: slot,
+						volume: 127
+					}
+				});
+				document.dispatchEvent(event);
+			}
+		});
 	}
 }
 
