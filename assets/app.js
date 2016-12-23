@@ -496,7 +496,7 @@ class Settings extends Widget {
 		let resetBtn = new ToolbarItem("exclamation-triangle");
 
 		toolbar.appendChild(resetBtn.element);
-		
+
 		let instrumentSelectors = [];
 		this._instrumentSelectors = instrumentSelectors;
 		for (let i = 0; i < 16; i++) {
@@ -988,7 +988,7 @@ class MIDIProcessor {
 		}
 	}
 
-	static dumprequest() {
+	static dumpRequestMsg() {
 		return new Uint8Array([AUCATSVC_CONTROL, SYSEX_START, SYSEX_TYPE_EDU, 0, SYSEX_AUCAT, SYSEX_AUCAT_DUMPREQ, SYSEX_STOP]);
 	}
 
@@ -1148,6 +1148,10 @@ class Connection {
 
 	_onOpen(e) {
 		logError("");
+		let msg = MIDIProcessor.dumpRequestMsg();
+		if (!this.send(msg)) {
+			logError("unable to send dump request");
+		}
 	}
 
 	_onError(e) {
