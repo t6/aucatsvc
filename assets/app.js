@@ -415,9 +415,13 @@ class InstrumentSelector extends Widget {
 		select.appendChild(option);
 		INSTRUMENTS.forEach((x, i) => {
 			let [bank, prog, category, name] = x;
+			if (bank > 0) {
+				return;
+			}
 			let option = document.createElement("option");
 			option.value = i;
-			option.innerText = "" + bank + " " + prog + " " + category + " - " + name;
+			//option.innerText = "" + bank + " " + prog + " " + category + " - " + name;
+			option.innerText = "" + prog + " " + category + " - " + name;
 			select.appendChild(option);
 		});
 
@@ -426,7 +430,6 @@ class InstrumentSelector extends Widget {
 				return;
 			}
 			let [bank, prog] = INSTRUMENTS[e.target.value];
-			console.log(bank, prog);
 			let event = new CustomEvent("ProgramChangeRequest", {
 				detail: {
 					channel: this.channel,
@@ -1001,7 +1004,7 @@ class MIDIProcessor {
 	}
 
 	static programChangeMsg(channel, bank, program) {
-		return new Uint8Array([AUCATSVC_MIDI, MIDI_CTL + channel, 0x00, 0x7f, MIDI_CTL + channel, 0x20, 0x00, 0xc0 + channel, program]);
+		//return new Uint8Array([AUCATSVC_MIDI, MIDI_CTL + channel, 0x00, 0x7f, MIDI_CTL + channel, 0x20, 0x00, 0xc0 + channel, program]);
 		return new Uint8Array([AUCATSVC_MIDI, 0xc0 + channel, program]);
 	}
 
@@ -1118,7 +1121,7 @@ class MIDIEventProcessor extends MIDIProcessor {
 			});
 			document.dispatchEvent(event);
 		} else {
-			console.log(data);
+			//console.log(data);
 		}
 	}
 }
