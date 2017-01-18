@@ -1,5 +1,6 @@
 SASSC?=	sassc
 KORE?=	kore
+JSHINT?=	jshint
 INOTIFYWAIT?=	inotifywait
 
 SCSS_SRC=	src/app.scss \
@@ -19,7 +20,7 @@ assets/app.css: ${SCSS_SRC}
 	${SASSC} -t compressed src/app.scss assets/app.css
 
 lint: assets/app.js
-	@jshint --verbose --reporter unix $>
+	@${JSHINT} --verbose --reporter unix $>
 
 watch: all
 	@${INOTIFYWAIT} -q -m -e close_write src assets | \
