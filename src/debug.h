@@ -17,34 +17,28 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#ifdef DEBUG
-#include <stdio.h>
+#include <kore/kore.h>
 
 #define DPRINTFN(n, ...)					\
 	do {							\
 		if (_sndio_debug >= (n))			\
-			fprintf(stderr, __VA_ARGS__);		\
+			kore_log(LOG_DEBUG, __VA_ARGS__);	\
 	} while(0)
 
 #define DPRINTF(...)						\
 	do {							\
 		if (_sndio_debug > 0)				\
-			fprintf(stderr, __VA_ARGS__);		\
+			kore_log(LOG_DEBUG, __VA_ARGS__);	\
 	} while(0)
 
 #define DPERROR(s)						\
 	do {							\
 		if (_sndio_debug > 0)				\
-			perror(s);				\
+			kore_log(LOG_ERR, s);			\
 	} while(0)
 
 void _sndio_debug_init(void);
 extern int _sndio_debug;
-#else
-#define DPRINTF(...) do {} while(0)
-#define DPRINTFN(...) do {} while(0)
-#define DPERROR(s) do {} while(0)
-#endif
 
 const char *_sndio_parsetype(const char *, char *);
 const char *_sndio_parsenum(const char *, unsigned int *, unsigned int);

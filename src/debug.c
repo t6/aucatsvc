@@ -22,7 +22,6 @@
 #include "debug.h"
 #include "bsd-compat.h"
 
-#ifdef DEBUG
 /*
  * debug level, -1 means uninitialized
  */
@@ -31,15 +30,8 @@ int _sndio_debug = -1;
 void
 _sndio_debug_init(void)
 {
-	char *dbg;
-
-	if (_sndio_debug < 0) {
-		dbg = issetugid() ? NULL : getenv("SNDIO_DEBUG");
-		if (!dbg || sscanf(dbg, "%u", &_sndio_debug) != 1)
-			_sndio_debug = 0;
-	}
+	_sndio_debug = 1;
 }
-#endif
 
 const char *
 _sndio_parsetype(const char *str, char *type)
