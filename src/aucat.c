@@ -37,45 +37,6 @@
 #include "debug.h"
 #include "bsd-compat.h"
 
-#ifndef HAVE_ARC4RANDOM
-
-#ifndef DEV_RANDOM
-#define DEV_RANDOM "/dev/arandom"
-#endif
-
-static int
-random_bytes(unsigned char *buf, int len)
-{
-	ssize_t n;
-	int fd;
-
-	fd = open(DEV_RANDOM, O_RDONLY);
-	if (fd < 0) {
-		DPERROR(DEV_RANDOM);
-		return 0;
-	}
-	while (len > 0) {
-		n = read(fd, buf, len);
-		if (n < 0) {
-			if (errno == EINTR)
-				continue;
-			DPERROR(DEV_RANDOM);
-			close(fd);
-			return 0;
-		}
-		if (n == 0) {
-			DPRINTF("%s: unexpected eof\n", DEV_RANDOM);
-			close(fd);
-			return 0;
-		}
-		buf += n;
-		len -= n;
-	}
-	close(fd);
-	return 1;
-}
-#endif
-
 /*
  * read a message, return 0 if not completed
  */
@@ -244,29 +205,15 @@ _aucat_wdata(struct aucat *hdl, const void *buf, size_t len,
 static int
 aucat_mkcookie(unsigned char *cookie)
 {
-#define COOKIE_SUFFIX	"/.aucat_cookie"
-#define TEMPL_SUFFIX	".XXXXXXXX"
 	struct stat sb;
-	char *home, *path = NULL, *tmp = NULL;
-	size_t home_len, path_len;
+	char *path = NULL;
 	int fd, len;
 
-	/* please gcc */
-	path_len = 0xdeadbeef;
-
-	/*
-	 * try to load the cookie
-	 */
-	home = issetugid() ? NULL : getenv("HOME");
-	if (home == NULL)
-		goto bad_gen;
-	home_len = strlen(home);
-	path = malloc(home_len + sizeof(COOKIE_SUFFIX));
-	if (path == NULL)
-		goto bad_gen;
-	memcpy(path, home, home_len);
-	memcpy(path + home_len, COOKIE_SUFFIX, sizeof(COOKIE_SUFFIX));
-	path_len = home_len + sizeof(COOKIE_SUFFIX) - 1;
+#ifdef DEVELOPMENT
+	path = "./aucat_cookie";
+#else
+	path = "/aucat_cookie";
+#endif
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		if (errno != ENOENT)
@@ -295,50 +242,8 @@ aucat_mkcookie(unsigned char *cookie)
 bad_close:
 	close(fd);
 bad_gen:
-	/*
-	 * generate a new cookie
-	 */
-#ifdef HAVE_ARC4RANDOM
-	arc4random_buf(cookie, AMSG_COOKIELEN);
-#else
-	if (!random_bytes(cookie, AMSG_COOKIELEN)) {
-		if (path)
-			free(path);
-		return 0;
-	}
-#endif
-
-	/*
-	 * try to save the cookie
-	 */
-	if (home == NULL)
-		goto done;
-	tmp = malloc(path_len + sizeof(TEMPL_SUFFIX));
-	if (tmp == NULL)
-		goto done;
-	memcpy(tmp, path, path_len);
-	memcpy(tmp + path_len, TEMPL_SUFFIX, sizeof(TEMPL_SUFFIX));
-	fd = mkstemp(tmp);
-	if (fd < 0) {
-		DPERROR(tmp);
-		goto done;
-	}
-	if (write(fd, cookie, AMSG_COOKIELEN) < 0) {
-		DPERROR(tmp);
-		unlink(tmp);
-		close(fd);
-		goto done;
-	}
-	close(fd);
-	if (rename(tmp, path) < 0) {
-		DPERROR(tmp);
-		unlink(tmp);
-	}
+	return 0;
 done:
-	if (tmp)
-		free(tmp);
-	if (path)
-		free(path);
 	return 1;
 }
 
