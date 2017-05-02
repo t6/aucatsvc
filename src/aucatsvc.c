@@ -73,12 +73,6 @@ init(int state)
 	switch (state) {
 	case KORE_MODULE_LOAD:
 		if (worker->id == WORKER_ID) {
-#if !defined(DEVELOPMENT)
-			/* sndio looks for the .aucat_cookie file at
-			 * home.  Make sure it can be found in the
-			 * chroot. */
-			putenv("HOME=/");
-#endif
 			aucat_hdl = mio_open(AUDIODEVICE, MIO_OUT | MIO_IN, 0);
 			if (aucat_hdl == NULL) {
 				kore_log(LOG_WARNING, "unable to open %s", AUDIODEVICE);
